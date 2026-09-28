@@ -13,6 +13,8 @@ first real conversation.
 - [The house rules](#the-house-rules)
 - [When something is wrong](#when-something-is-wrong)
 
+<img src="../assets/diagram.svg" alt="AI client → MCP server → Revit add-in → Revit" width="100%">
+
 ## What you need
 
 | | |

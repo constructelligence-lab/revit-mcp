@@ -15,18 +15,34 @@ This does the opposite. Revit stays where it is, the data stays on the workstati
 narrow, auditable set of reads plus exactly one write: off by default, previewed before it happens, applied in
 a single undoable transaction.
 
-```
-Claude Desktop · Claude Code · Cursor · Windsurf · VS Code · DSCode · any MCP client
-        │  MCP over stdio
-        ▼
-server/server.mjs                    Node, portable — runs on Windows, macOS, Linux, in CI and demos
-        │  HTTP + JSON on 127.0.0.1:8712, bearer token        (docs/protocol.md)
-        ▼
-addin/RevitMcp.dll                   C#, loaded by Revit — the only place the Revit API can be called
-        │  Revit API on Revit's own thread (ExternalEvent)
-        ▼
-the model the user has open
-```
+<img src="assets/diagram.svg" alt="An AI client speaks MCP over stdio to the MCP server, which speaks HTTP over loopback to the add-in inside Revit, which uses the Revit API on Revit's own thread to read and edit the open model" width="100%">
+
+## How it works
+
+Two processes, because the Revit API is in-process and single-threaded: nothing outside Revit can read a
+document, and nothing may touch one off Revit's thread. The **MCP server** owns the AI protocol; the
+**add-in** owns the model.
+
+| | |
+|---|---|
+| **AI client → MCP server** | MCP over stdio. The client is the only part that may be hosted: if it is, it sends whatever a tool returned to its provider. This project sends nothing anywhere. |
+| **MCP server → add-in** | HTTP + JSON on `127.0.0.1:8712` with a bearer token, loopback only. [`docs/protocol.md`](docs/protocol.md) is the contract: routes, envelope, error codes, every op. |
+| **add-in → Revit** | The Revit API, on Revit's thread. Requests are queued and marshalled with an `ExternalEvent`, so Revit finishes what it is doing first. |
+| **Reads** | Always available. Live at call time, never cached: a `revit://…` resource or a tool call is a read of the document as it is now. |
+| **Writes** | One tool, two gates, preview by default, one transaction. Neither process can open the gate alone. |
+
+### Where everything lives
+
+| Path | What it does |
+|---|---|
+| `server/server.mjs` | MCP server: registers the menu, applies the write gate, maps tools to bridge ops |
+| `server/tools.mjs` · `prompts.mjs` · `resources.mjs` | The menu itself — one place, so the README, the tests and the protocol cannot drift |
+| `server/bridge.mjs` | Loopback client: token discovery, timeouts, and the error messages a person reads |
+| `server/mock.mjs` | The sample model that makes all of this testable without Revit |
+| `addin/Bridge/BridgeServer.cs` | `HttpListener` on loopback, token check, write gate, one JSON envelope |
+| `addin/Bridge/RevitDispatcher.cs` | The queue and `ExternalEvent` that put work on Revit's thread; the abandoned-request rule |
+| `addin/Handlers/` | The Revit API work: fourteen reads and one write (`parameter.set`) |
+| `docs/protocol.md` · `security.md` · `guide.md` | The contract, the threat model, and the 20-minute guide |
 
 Two processes, because the Revit API is in-process and single-threaded: nothing outside Revit can read a
 document, and nothing may touch one off Revit's thread. The MCP server owns the AI protocol; the add-in owns
@@ -139,6 +155,11 @@ To allow writes, add `--allow-writes` **and** set `"allowWrites": true` in
 from the model's imagination. A call with no `apply: true` changes nothing.
 
 ## What a session looks like
+
+One call, end to end — the same path for every read, and the two extra steps a write takes:
+
+<img src="assets/call-path.svg" alt="A read goes client to server to add-in to Revit and back; a write is previewed first and only applied with apply true, inside one transaction; a request that times out is abandoned so it cannot apply later" width="100%">
+
 
 ```jsonc
 // query_elements { "category": "Doors", "parameter": "Fire Rating", "value": "90" }

@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 700" role="img" aria-labelledby="title desc">
+  <title id="title">How revit-mcp is put together</title>
+  <desc id="desc">An AI client speaks MCP over stdio to a Node server on the same machine, which speaks HTTP over loopback to a C# add-in inside Revit, which calls the Revit API on Revit's own thread to read and edit the open model. Reads always work; writes need two switches, one in each process.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7f9dc0"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#e0a458"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#5b6b7d"/>
+    </marker>
+    <style>
+      .box { stroke: #2d4a68; }
+      .card { fill: #0f1e2e; stroke: #24384f; stroke-width: 1.5; rx: 12; }
+      .bound { fill: none; stroke: #3d5f85; stroke-width: 1.5; stroke-dasharray: 7 6; rx: 20; }
+      .h { font: 700 21px Inter, -apple-system, Segoe UI, sans-serif; fill: #ffffff; }
+      .s { font: 500 15px Inter, -apple-system, Segoe UI, sans-serif; fill: #a8c0d8; }
+      .m { font: 500 14px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #8fb8ff; }
+      .a { font: 600 14px Inter, -apple-system, Segoe UI, sans-serif; fill: #7f9dc0; }
+      .amber { fill: #e0a458; }
+      .dim { fill: #6f8ba8; }
+      .gate { font: 700 13px Inter, -apple-system, Segoe UI, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1180" height="700" fill="#0b1622"/>
+
+  <!-- your machine -->
+  <rect class="bound" x="30" y="70" width="800" height="530"/>
+  <text class="a" x="52" y="100" fill="#9fb6cd">one workstation · nothing here listens on the network</text>
+
+  <!-- 1. client -->
+  <rect class="box" x="60" y="120" width="290" height="120" rx="14" fill="#13263a" stroke="#2d4a68" stroke-width="2"/>
+  <text class="h" x="82" y="158">AI client</text>
+  <text class="s" x="82" y="186">Claude Desktop · Claude Code</text>
+  <text class="s" x="82" y="208">Cursor · VS Code · DSCode</text>
+  <text class="dim" x="82" y="230">the only part that may be hosted</text>
+
+  <!-- stdio arrow -->
+  <line x1="205" y1="240" x2="205" y2="300" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="150" y="258" width="112" height="26" rx="13" fill="#0f1e2e" stroke="#24384f"/>
+  <text class="m" x="163" y="276">MCP · stdio</text>
+
+  <!-- 2. mcp server -->
+  <rect class="box" x="60" y="302" width="290" height="150" rx="14" fill="#13263a" stroke="#2d4a68" stroke-width="2"/>
+  <text class="h" x="82" y="338">MCP server</text>
+  <text class="m" x="82" y="362">server/server.mjs</text>
+  <text class="s" x="82" y="388">15 tools · 4 prompts · 3 resources</text>
+  <text class="s" x="82" y="410">timeouts · error envelope · mock</text>
+  <text class="gate" x="82" y="438" fill="#e0a458">gate 1 · --allow-writes</text>
+
+  <!-- loopback arrow -->
+  <line x1="350" y1="377" x2="470" y2="377" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="352" y="336" width="120" height="26" rx="13" fill="#0f1e2e" stroke="#24384f"/>
+  <text class="m" x="361" y="354" font-size="12.5">127.0.0.1:8712</text>
+  <text class="dim" x="356" y="404">bearer token · JSON</text>
+  <text class="dim" x="356" y="424">loopback only</text>
+
+  <!-- 3. add-in -->
+  <rect class="box" x="472" y="302" width="300" height="150" rx="14" fill="#13263a" stroke="#2d4a68" stroke-width="2"/>
+  <text class="h" x="494" y="338">Revit add-in</text>
+  <text class="m" x="494" y="362">addin/RevitMcp.dll</text>
+  <text class="s" x="494" y="388">HttpListener · queue · ExternalEvent</text>
+  <text class="s" x="494" y="410">14 reads + 1 write (parameter.set)</text>
+  <text class="gate" x="494" y="438" fill="#e0a458">gate 2 · allowWrites</text>
+
+  <!-- revit api arrow -->
+  <line x1="622" y1="452" x2="622" y2="512" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <rect x="530" y="470" width="184" height="26" rx="13" fill="#0f1e2e" stroke="#24384f"/>
+  <text class="m" x="543" y="488" font-size="12.5">Revit API · its thread</text>
+
+  <!-- 4. revit -->
+  <rect class="box" x="472" y="514" width="300" height="72" rx="14" fill="#13263a" stroke="#2d4a68" stroke-width="2"/>
+  <text class="h" x="494" y="546">Revit</text>
+  <text class="s" x="494" y="568">the model the user has open</text>
+
+  <!-- egress note -->
+  <rect x="880" y="120" width="270" height="120" rx="12" fill="#0f1e2e" stroke="#24384f" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text class="a" x="902" y="152" fill="#9fb6cd">model provider</text>
+  <text class="s" x="902" y="178">if the client is hosted, the</text>
+  <text class="s" x="902" y="200">client sends it what a tool</text>
+  <text class="s" x="902" y="222">returned. This project sends nothing.</text>
+  <line x1="352" y1="170" x2="876" y2="170" stroke="#5b6b7d" stroke-width="2" stroke-dasharray="6 6" marker-end="url(#arrow-grey)"/>
+
+  <!-- read / write legend -->
+  <rect class="card" x="880" y="270" width="270" height="182"/>
+  <text class="h" x="902" y="304" font-size="18">reads and writes</text>
+  <line x1="902" y1="330" x2="960" y2="330" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text class="s" x="972" y="335">read: always</text>
+  <line x1="902" y1="368" x2="960" y2="368" stroke="#e0a458" stroke-width="2.5" marker-end="url(#arrow-amber)"/>
+  <text class="s" x="972" y="373">write: both gates on</text>
+  <text class="s" x="902" y="404">one transaction, one Ctrl+Z</text>
+  <text class="s" x="902" y="426">previewed unless apply: true</text>
+
+  <text class="dim" x="60" y="660">docs/protocol.md is the contract between the two boxes; docs/security.md says what is and is not protected.</text>
+</svg>

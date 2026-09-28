@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 620" role="img" aria-labelledby="t2 d2">
+  <title id="t2">What happens on one tool call</title>
+  <desc id="d2">A read goes client to server to add-in to Revit and back. A write is previewed first, and only with apply true does it open a Revit transaction; two gates must be open. A request that times out is abandoned so it can never apply later.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7f9dc0"/>
+    </marker>
+    <marker id="a2w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#e0a458"/>
+    </marker>
+    <marker id="a2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#d96b6b"/>
+    </marker>
+    <style>
+      .lane { fill: #0f1e2e; stroke: #24384f; stroke-width: 1.5; rx: 12; }
+      .laneh { font: 700 17px Inter, -apple-system, Segoe UI, sans-serif; fill: #ffffff; }
+      .lanes { font: 500 13.5px Inter, -apple-system, Segoe UI, sans-serif; fill: #a8c0d8; }
+      .step { font: 600 14px Inter, -apple-system, Segoe UI, sans-serif; fill: #cfe0f2; }
+      .num { font: 700 13px Inter, -apple-system, Segoe UI, sans-serif; fill: #0b1622; }
+      .mono { font: 500 13px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #8fb8ff; }
+      .amber { fill: #e0a458; }
+      .red { fill: #d96b6b; }
+      .dim { fill: #6f8ba8; font: 500 13px Inter, -apple-system, Segoe UI, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1180" height="620" fill="#0b1622"/>
+  <text x="40" y="52" font="700 24px Inter, -apple-system, Segoe UI, sans-serif" style="font: 700 24px Inter, -apple-system, Segoe UI, sans-serif" fill="#ffffff">What happens on one tool call</text>
+  <text x="40" y="80" class="dim">The same path for every read. A write adds the two gates and a transaction, and never happens by accident.</text>
+
+  <!-- lanes -->
+  <rect class="lane" x="40" y="110" width="220" height="70" rx="12"/>
+  <text class="laneh" x="60" y="140">AI client</text>
+  <text class="lanes" x="60" y="163">asks a question</text>
+
+  <rect class="lane" x="300" y="110" width="240" height="70" rx="12"/>
+  <text class="laneh" x="320" y="140">MCP server</text>
+  <text class="lanes" x="320" y="163">tool · gate 1 · timeout</text>
+
+  <rect class="lane" x="580" y="110" width="240" height="70" rx="12"/>
+  <text class="laneh" x="600" y="140">Revit add-in</text>
+  <text class="lanes" x="600" y="163">queue · gate 2</text>
+
+  <rect class="lane" x="860" y="110" width="280" height="70" rx="12"/>
+  <text class="laneh" x="880" y="140">Revit (its own thread)</text>
+  <text class="lanes" x="880" y="163">reads and one transaction</text>
+
+  <!-- read path -->
+  <text class="step" x="40" y="228">1 · a read, end to end</text>
+  <line x1="260" y1="252" x2="296" y2="252" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#a2)"/>
+  <circle cx="278" cy="236" r="11" fill="#8fb8ff"/><text class="num" x="273" y="241">1</text>
+  <line x1="540" y1="252" x2="576" y2="252" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#a2)"/>
+  <circle cx="558" cy="236" r="11" fill="#8fb8ff"/><text class="num" x="553" y="241">2</text>
+  <line x1="820" y1="252" x2="856" y2="252" stroke="#7f9dc0" stroke-width="2.5" marker-end="url(#a2)"/>
+  <circle cx="838" cy="236" r="11" fill="#8fb8ff"/><text class="num" x="833" y="241">3</text>
+  <path d="M1100 262 C1100 300 120 300 120 262" fill="none" stroke="#7f9dc0" stroke-width="2" stroke-dasharray="5 5" marker-end="url(#a2)"/>
+  <text class="mono" x="470" y="298">result: Revit's own JSON, no caching, ids that exist</text>
+
+  <!-- write path -->
+  <text class="step" x="40" y="358">4 · a write, in two halves</text>
+  <circle cx="278" cy="366" r="11" fill="#e0a458"/><text class="num" x="273" y="371">4</text>
+  <line x1="260" y1="382" x2="296" y2="382" stroke="#e0a458" stroke-width="2.5" marker-end="url(#a2w)"/>
+  <circle cx="558" cy="366" r="11" fill="#e0a458"/><text class="num" x="553" y="371">5</text>
+  <line x1="540" y1="382" x2="576" y2="382" stroke="#e0a458" stroke-width="2.5" marker-end="url(#a2w)"/>
+  <text class="mono" x="600" y="386" fill="#e0a458">apply: false</text>
+  <text class="dim" x="40" y="410">gate 1: server refuses the call unless --allow-writes · gate 2: add-in refuses with writes_disabled unless allowWrites</text>
+  <text class="dim" x="40" y="432">with both open, the answer is still a preview: element, parameter, old value, new value, applied: false</text>
+
+  <circle cx="278" cy="470" r="11" fill="#e0a458"/><text class="num" x="273" y="475">6</text>
+  <line x1="260" y1="486" x2="296" y2="486" stroke="#e0a458" stroke-width="2.5" marker-end="url(#a2w)"/>
+  <text class="mono" x="310" y="490" fill="#e0a458">apply: true</text>
+  <line x1="540" y1="486" x2="576" y2="486" stroke="#e0a458" stroke-width="2.5" marker-end="url(#a2w)"/>
+  <circle cx="838" cy="482" r="11" fill="#e0a458"/><text class="num" x="833" y="487">7</text>
+  <line x1="820" y1="486" x2="856" y2="486" stroke="#e0a458" stroke-width="2.5" marker-end="url(#a2w)"/>
+  <text class="dim" x="880" y="490">one Transaction → Commit</text>
+
+  <!-- timeout rule -->
+  <rect x="40" y="518" width="1100" height="72" rx="12" fill="#1a1113" stroke="#7a3b3b" stroke-width="1.5"/>
+  <circle cx="66" cy="548" r="11" fill="#d96b6b"/><text class="num" x="61" y="553">8</text>
+  <text class="step" x="92" y="552" fill="#f0c6c6">A request that times out is abandoned — and skipped when Revit's thread frees up.</text>
+  <text class="dim" x="92" y="574">Otherwise a write whose answer was "it did not happen" could quietly happen a minute later, when a modal dialog closed.</text>
+</svg>
