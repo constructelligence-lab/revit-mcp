@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The add-in Revit loads. Revit 2025+ hosts .NET 8; the API itself is not redistributable, so the
+       two RevitApi references are compile-time only (ExcludeAssets=runtime) and Revit supplies the real
+       assemblies at run time. Build on any machine with the .NET SDK — EnableWindowsTargeting lets a
+       net8.0-windows library compile on macOS/Linux, which is what CI does; only *running* needs Windows
+       and Revit. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>RevitMcp</AssemblyName>
+    <RootNamespace>RevitMcp</RootNamespace>
+    <Version>0.1.0</Version>
+    <!-- Revit release to build against: 2025, 2026, 2027. Revit 2024 and older run .NET Framework 4.8:
+         build those with -p:TargetFramework=net48 and -p:RevitVersion=2024. -->
+    <RevitVersion Condition="'$(RevitVersion)' == ''">2025</RevitVersion>
+    <Configurations>Debug;Release</Configurations>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="manifest\RevitMcp.addin" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

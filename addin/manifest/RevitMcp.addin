@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copy this file and RevitMcp.dll into %APPDATA%\Autodesk\Revit\Addins\2025\ (the year matches your
+     Revit release). Revit loads it at startup; the bridge then listens on 127.0.0.1 only. -->
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Name>revit-mcp bridge</Name>
+    <Assembly>RevitMcp.dll</Assembly>
+    <AddInId>8f2c1b12-8b1e-4c3a-9f6a-3c2f8b1d5a71</AddInId>
+    <FullClassName>RevitMcp.App</FullClassName>
+    <VendorId>CONSTRUCT</VendorId>
+    <VendorDescription>Constructelligence (constructelligence.co)</VendorDescription>
+  </AddIn>
+</RevitAddIns>

@@ -1,0 +1,14 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
