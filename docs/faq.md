@@ -30,10 +30,11 @@ move, save and sync are deliberately absent; they are decisions for a person in 
 Not yet. When it does, it will say "this changes N instances" and ask, because that is the sentence a person
 needs before saying yes.
 
-**Does it work with Revit 2024 or older?**
-The add-in targets Revit 2025 (.NET 8) by default. 2024 and older run .NET Framework 4.8:
-`dotnet build -p:RevitVersion=2024 -p:TargetFramework=net48`. 2026 and 2027:
-`-p:RevitVersion=2026` / `2027`.
+**Which Revit versions does it build for?**
+The framework follows the release: Revit 2025 and 2026 host .NET 8 (`net8.0-windows`), Revit 2027 hosts
+.NET 10 (`net10.0-windows`), Revit 2024 and older host .NET Framework 4.8 (`net48`). Pass
+`-p:RevitVersion=2027` and the project picks the framework; CI builds all four, on Linux and Windows. Only
+running it needs Windows and Revit.
 
 **Does it work with cloud-workshared (ACC/BIM 360) models?**
 It reads the document Revit has open, which is the local copy: it may be ahead of or behind what the rest of

@@ -64,7 +64,7 @@ public static partial class RevitOps
     {
         if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Number)
             return fallback;
-        return Math.Clamp(value.GetInt32(), min, max);
+        return Compat.Clamp(value.GetInt32(), min, max);
     }
 
     private static long ElementIdArg(JsonElement args, string name)
@@ -108,7 +108,7 @@ public static partial class RevitOps
         {
             var name = parameter.Definition?.Name;
             if (string.IsNullOrEmpty(name)) continue;
-            values.TryAdd(name, DisplayValue(parameter));
+            if (!values.ContainsKey(name)) values[name] = DisplayValue(parameter);
         }
         return values;
     }

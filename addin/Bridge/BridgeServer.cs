@@ -192,16 +192,11 @@ public sealed class BridgeServer : IDisposable
         var header = request.Headers["Authorization"];
         return header is not null
                && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-               && CryptographicEquals(header[7..].Trim(), _settings.Token);
+               && CryptographicEquals(header.Substring(7).Trim(), _settings.Token);
     }
 
     /// <summary>Compare without an early exit, so a wrong token cannot be narrowed down a character at a time.</summary>
-    private static bool CryptographicEquals(string a, string b)
-    {
-        var left = Encoding.UTF8.GetBytes(a);
-        var right = Encoding.UTF8.GetBytes(b);
-        return left.Length == right.Length && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(left, right);
-    }
+    private static bool CryptographicEquals(string a, string b) => Compat.FixedTimeEquals(a, b);
 
     private static async Task WriteAsync(HttpListenerContext context, int status, object payload)
     {
@@ -209,7 +204,7 @@ public sealed class BridgeServer : IDisposable
         context.Response.StatusCode = status;
         context.Response.ContentType = "application/json; charset=utf-8";
         context.Response.ContentLength64 = bytes.Length;
-        await context.Response.OutputStream.WriteAsync(bytes);
+        await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
         context.Response.Close();
     }
 

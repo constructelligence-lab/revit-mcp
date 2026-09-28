@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CI matrix now builds every supported Revit release.** Revit 2027's API package targets .NET 10, and
+  the `net48` build for Revit 2024 needed .NET Framework reference assemblies, `System.Text.Json`, and a
+  `Compat` layer for the APIs that framework lacks (`Math.Clamp`, `Task.WaitAsync`, `Convert.ToHexString`,
+  `Environment.ProcessId`, `CryptographicOperations.FixedTimeEquals`, `Dictionary.TryAdd`, range syntax,
+  `GetValueOrDefault`, `ToHashSet`).
+- **`fail-fast: false`** on the add-in matrix: one release failing no longer cancels the others, which is how
+  the Revit 2026 job went unreported on the first run.
+- The `net48` job restores with the framework override before building: an implicit restore during
+  `dotnet build` does not see `-p:TargetFramework`.
+
 ## [0.1.0] — 2026-09-28
 
 ### Added

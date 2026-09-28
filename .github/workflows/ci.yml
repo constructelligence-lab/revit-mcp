@@ -30,15 +30,24 @@ jobs:
     name: Add-in (Revit ${{ matrix.revit }})
     runs-on: ubuntu-latest
     strategy:
+      # One release failing must not hide the others: the point of the matrix is to see all of them.
+      fail-fast: false
       matrix:
-        revit: ['2025', '2026', '2027']
+        include:
+          - revit: '2025'      # .NET 8
+          - revit: '2026'      # .NET 8
+          - revit: '2027'      # .NET 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - run: dotnet build -c Release -p:RevitVersion=${{ matrix.revit }}
         working-directory: addin
+      - name: Which binary was produced
+        run: ls -la addin/bin/Release/*/ | head -20
 
   addin-net48:
     name: Add-in (Revit 2024, .NET Framework 4.8)
@@ -47,6 +56,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-      - run: dotnet build -c Release -p:RevitVersion=2024 -p:TargetFramework=net48
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      # Restore and build must name the framework together: an implicit restore during `dotnet build`
+      # does not see -p:TargetFramework, which is how this job failed its first run.
+      - run: dotnet restore -p:RevitVersion=2024 -p:TargetFramework=net48
+        working-directory: addin
+      - run: dotnet build -c Release --no-restore -p:RevitVersion=2024 -p:TargetFramework=net48
         working-directory: addin

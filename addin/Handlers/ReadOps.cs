@@ -21,7 +21,7 @@ public static partial class RevitOps
             bridge = new
             {
                 version = typeof(RevitOps).Assembly.GetName().Version?.ToString(3) ?? "0.1.0",
-                pid = Environment.ProcessId,
+                pid = Compat.ProcessId,
                 writesAllowed = settings.AllowWrites,
                 port = settings.Port,
                 mock = false,
@@ -138,7 +138,7 @@ public static partial class RevitOps
             {
                 var parameterValue = element.Parameters.Cast<Parameter>()
                     .FirstOrDefault(p => string.Equals(p.Definition?.Name, parameter, StringComparison.OrdinalIgnoreCase));
-                if (parameterValue is null || !(DisplayValue(parameterValue) ?? string.Empty).Contains(value, StringComparison.OrdinalIgnoreCase)) continue;
+                if (parameterValue is null || !Compat.Contains(DisplayValue(parameterValue) ?? string.Empty, value)) continue;
             }
             matches.Add(element);
         }
@@ -235,7 +235,8 @@ public static partial class RevitOps
         foreach (var instance in new FilteredElementCollector(doc).OfClass(typeof(FamilyInstance)).Cast<FamilyInstance>())
         {
             var familyId = instance.Symbol?.Family?.Id.Value ?? 0;
-            instances[familyId] = instances.GetValueOrDefault(familyId) + 1;
+            instances.TryGetValue(familyId, out var count);
+            instances[familyId] = count + 1;
         }
 
         var families = new FilteredElementCollector(doc).OfClass(typeof(Family)).Cast<Family>()
@@ -244,7 +245,7 @@ public static partial class RevitOps
                 id = f.Id.Value,
                 name = f.Name,
                 types = f.GetFamilySymbolIds().Count,
-                instances = instances.GetValueOrDefault(f.Id.Value),
+                instances = instances.TryGetValue(f.Id.Value, out var placed) ? placed : 0,
             })
             .OrderByDescending(f => f.instances)
             .ToList();
@@ -348,7 +349,7 @@ public static partial class RevitOps
 
         var folder = Path.Combine(Path.GetTempPath(), "revit-mcp");
         System.IO.Directory.CreateDirectory(folder);
-        var before = Directory.GetFiles(folder, "*.png").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var before = new HashSet<string>(Directory.GetFiles(folder, "*.png"), StringComparer.OrdinalIgnoreCase);
 
         // A specific view needs ExportRange.SetOfViews; Revit names the file itself (ImageExportOptions.GetFileName
         // is the API for that), so the answer is "the file Revit actually wrote", not a guess at a path.

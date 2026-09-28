@@ -5,16 +5,33 @@ A `IExternalApplication` that starts a loopback HTTP bridge inside Revit and ser
 
 ## Build
 
+The framework follows the Revit release — Revit 2025 and 2026 host .NET 8, Revit 2027 hosts .NET 10, and
+Revit 2024 and older host .NET Framework 4.8:
+
 ```sh
-dotnet build -c Release                                  # against Revit 2025 (net8.0-windows)
-dotnet build -c Release -p:RevitVersion=2026             # 2026 or 2027
-dotnet build -c Release -p:RevitVersion=2024 -p:TargetFramework=net48   # 2024 and older: .NET Framework 4.8
+# Revit 2025 (default) · Revit 2026    -> bin/Release/net8.0-windows
+dotnet build -c Release
+dotnet build -c Release -p:RevitVersion=2026
+
+# Revit 2027 (.NET 10)                 -> bin/Release/net10.0-windows
+dotnet build -c Release -p:RevitVersion=2027
+
+# Revit 2024 (.NET Framework 4.8)      -> bin/Release/net48
+# restore and build must name the framework together: an implicit restore will not see the override
+dotnet restore -p:RevitVersion=2024 -p:TargetFramework=net48
+dotnet build -c Release --no-restore -p:RevitVersion=2024 -p:TargetFramework=net48
 ```
 
 The two `Nice3point.Revit.Api.*` packages are **compile-time only** (`ExcludeAssets="runtime"`): they carry
-the API surface and no implementation, so this builds on any machine with the .NET SDK, including CI and
-macOS, while Revit supplies the real assemblies at run time. `EnableWindowsTargeting` is what allows a
-`net8.0-windows` library to compile off Windows.
+the API surface and no implementation, so every one of those builds works on any machine with the .NET SDK —
+CI runs the whole matrix on Linux and Windows, and macOS builds it too — while Revit supplies the real
+assemblies at run time. `EnableWindowsTargeting` is what allows a `net8.0-windows` or `net10.0-windows`
+library to compile off Windows, and `Microsoft.NETFramework.ReferenceAssemblies` does the same for net48.
+
+Revit 2024 and older also need `System.Text.Json` beside the DLL (the bridge speaks JSON and the 4.8
+framework does not ship it); the build copies it for you, and `Compat.cs` covers the handful of APIs that
+framework lacks (`Math.Clamp`, `Task.WaitAsync`, `Convert.ToHexString`, `Environment.ProcessId` and the
+constant-time token comparison).
 
 ## Install
 
@@ -22,6 +39,7 @@ Copy the DLL and the manifest into the Revit release folder — `2025` below is 
 the release you are running:
 
 ```powershell
+# the framework folder matches your Revit release: net8.0-windows (2025/2026), net10.0-windows (2027), net48 (2024)
 copy bin\Release\net8.0-windows\RevitMcp.dll              %APPDATA%\Autodesk\Revit\Addins\2025\
 copy bin\Release\net8.0-windows\manifest\RevitMcp.addin   %APPDATA%\Autodesk\Revit\Addins\2025\
 ```

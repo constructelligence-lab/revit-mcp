@@ -44,7 +44,7 @@ public sealed class RevitDispatcher : IExternalEventHandler, IRevitDispatcher
 
         try
         {
-            var result = await item.Completion.Task.WaitAsync(timeout, token).ConfigureAwait(false);
+            var result = await Compat.WaitAsync(item.Completion.Task, timeout, token).ConfigureAwait(false);
             Interlocked.Increment(ref _completed);
             return (T)result;
         }

@@ -89,10 +89,12 @@ Every sample answer carries `"mock": true`, so it can never be mistaken for a li
 
 ```powershell
 cd revit-mcp\addin
-dotnet build -c Release        # Revit 2025; add -p:RevitVersion=2026 or 2027 for newer
+dotnet build -c Release        # Revit 2025/2026 -> net8.0-windows; 2027 -> net10.0-windows; 2024 -> net48
 copy bin\Release\net8.0-windows\RevitMcp.dll            %APPDATA%\Autodesk\Revit\Addins\2025\
 copy bin\Release\net8.0-windows\manifest\RevitMcp.addin %APPDATA%\Autodesk\Revit\Addins\2025\
 ```
+
+Build commands for every release, including the two-step net48 build, are in [addin/README.md](addin/README.md).
 
 Start Revit, open a model, and the **revit-mcp** tab tells you the address, whether writes are allowed, and
 where the token is. Full detail, including Revit 2024 and two versions side by side, in

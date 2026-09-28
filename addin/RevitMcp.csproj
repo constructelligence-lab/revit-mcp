@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The add-in Revit loads. Revit 2025+ hosts .NET 8; the API itself is not redistributable, so the
+  <!-- The add-in Revit loads. Revit 2025/2026 host .NET 8 and Revit 2027 hosts .NET 10; the API itself is not redistributable, so the
        two RevitApi references are compile-time only (ExcludeAssets=runtime) and Revit supplies the real
        assemblies at run time. Build on any machine with the .NET SDK — EnableWindowsTargeting lets a
        net8.0-windows library compile on macOS/Linux, which is what CI does; only *running* needs Windows
        and Revit. -->
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- Which framework the add-in targets follows the Revit release, not the other way round:
+         Revit 2025 and 2026 host .NET 8; Revit 2027 hosts .NET 10; Revit 2024 and older host
+         .NET Framework 4.8. Build with -p:RevitVersion=2026 to move both at once. -->
+    <TargetFramework Condition="'$(RevitVersion)' == '2027'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(TargetFramework)' == ''">net8.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
@@ -15,7 +19,8 @@
     <RootNamespace>RevitMcp</RootNamespace>
     <Version>0.1.0</Version>
     <!-- Revit release to build against: 2025, 2026, 2027. Revit 2024 and older run .NET Framework 4.8:
-         build those with -p:TargetFramework=net48 and -p:RevitVersion=2024. -->
+         build those with -p:TargetFramework=net48 and -p:RevitVersion=2024. Restore and build must agree on
+         the framework, so pass both properties to every dotnet command (dotnet build does the restore). -->
     <RevitVersion Condition="'$(RevitVersion)' == ''">2025</RevitVersion>
     <Configurations>Debug;Release</Configurations>
   </PropertyGroup>
@@ -23,6 +28,16 @@
   <ItemGroup>
     <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
     <PackageReference Include="Nice3point.Revit.Api.RevitAPIUI" Version="$(RevitVersion).*" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <!-- .NET Framework reference assemblies, so a net48 build works on any machine (CI included)
+         without the Windows developer pack installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- .NET Framework 4.8 has no System.Text.Json in the framework, and the bridge speaks JSON. Its
+         dependencies (System.Memory, System.Text.Encodings.Web…) come with it and are copied beside the
+         DLL, which is what Revit needs at run time. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

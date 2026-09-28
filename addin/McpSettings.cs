@@ -66,7 +66,7 @@ public sealed class McpSettings
         if (string.IsNullOrWhiteSpace(settings.Token))
         {
             var existing = File.Exists(TokenPath) ? File.ReadAllText(TokenPath).Trim() : string.Empty;
-            settings.Token = existing.Length > 0 ? existing : Convert.ToHexString(Guid.NewGuid().ToByteArray()).ToLowerInvariant();
+            settings.Token = existing.Length > 0 ? existing : Compat.ToHex(Guid.NewGuid().ToByteArray());
         }
         try
         {
