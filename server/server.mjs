@@ -14,6 +14,8 @@ import { pathToFileURL } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { TOOLS } from './tools.mjs';
+import { PROMPTS } from './prompts.mjs';
+import { RESOURCES } from './resources.mjs';
 import { Bridge, DEFAULT_BRIDGE_URL, DEFAULT_TIMEOUT_MS, discoverToken, TOKEN_FILE } from './bridge.mjs';
 import { MockRevit } from './mock.mjs';
 
@@ -75,9 +77,15 @@ export function createBridge(args) {
 const asText = value => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
 const asError = (message, extra = {}) => ({ content: [{ type: 'text', text: JSON.stringify({ error: message, ...extra }, null, 2) }], isError: true });
 
-/** The MCP server: one registration per catalogue entry, and the write gate in one place. */
+/**
+ * The MCP server: the tool menu, the prompt menu (the workflows people actually run), live resources, and
+ * the write gate in one place.
+ */
 export function buildServer({ bridge, allowWrites = false, version = VERSION } = {}) {
   const server = new McpServer({ name: 'revit-mcp', version }, { instructions: INSTRUCTIONS });
+
+  registerPrompts(server);
+  registerResources(server, bridge);
 
   for (const tool of TOOLS) {
     server.registerTool(tool.name, {
@@ -106,6 +114,40 @@ export function buildServer({ bridge, allowWrites = false, version = VERSION } =
     });
   }
   return server;
+}
+
+/**
+ * Prompts are text, so they are the same for every session and cost nothing: the client asks for one by
+ * name with its arguments and gets the instructions a competent person would have written down.
+ */
+function registerPrompts(server) {
+  for (const prompt of PROMPTS) {
+    server.registerPrompt(prompt.name, {
+      title: prompt.title,
+      description: prompt.description,
+      argsSchema: prompt.args,
+    }, args => ({
+      messages: [{ role: 'user', content: { type: 'text', text: prompt.build(args ?? {}) } }],
+    }));
+  }
+}
+
+/**
+ * Resources are live reads of the open model, addressed as revit://… so a client can attach one to a
+ * conversation without spending a tool call. They run through the same bridge and the same errors as a
+ * tool: a resource that cannot be read is a resource that says why.
+ */
+function registerResources(server, bridge) {
+  for (const resource of RESOURCES) {
+    server.registerResource(resource.name, resource.uri, {
+      title: resource.name,
+      description: resource.description,
+      mimeType: 'application/json',
+    }, async uri => {
+      const result = await bridge.call(resource.op, {});
+      return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(result, null, 2) }] };
+    });
+  }
 }
 
 export async function main(argv = process.argv.slice(2), env = process.env) {

@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  server:
+    name: MCP server (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm ci
+        working-directory: server
+      - run: npm test
+        working-directory: server
+      - run: npm run check:docs
+        working-directory: server
+      - run: npm pack --dry-run
+        working-directory: server
+
+  addin:
+    name: Add-in (Revit ${{ matrix.revit }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        revit: ['2025', '2026', '2027']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet build -c Release -p:RevitVersion=${{ matrix.revit }}
+        working-directory: addin
+
+  addin-net48:
+    name: Add-in (Revit 2024, .NET Framework 4.8)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet build -c Release -p:RevitVersion=2024 -p:TargetFramework=net48
+        working-directory: addin

@@ -1,10 +1,10 @@
 {
-  "name": "revit-mcp-server",
+  "name": "@constructelligence/revit-mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MCP server that connects an AI client to a running Autodesk Revit model through the revit-mcp add-in",
-  "license": "SEE LICENSE IN ../LICENSE",
+  "description": "MCP server that connects AI clients to Autodesk Revit through the revit-mcp add-in",
+  "license": "MIT",
   "engines": {
     "node": ">=20"
   },
@@ -12,10 +12,46 @@
     "start": "node server.mjs",
     "mock": "node server.mjs --mock",
     "test": "node --test",
-    "tools:table": "node tools-table.mjs"
+    "tools:table": "node tools-table.mjs",
+    "demo": "node demo.mjs",
+    "check:docs": "node check-docs.mjs",
+    "prepublishOnly": "npm test && npm run check:docs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.1",
     "zod": "^4.6.5"
-  }
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "revit",
+    "bim",
+    "autodesk",
+    "ai",
+    "construction",
+    "claude"
+  ],
+  "homepage": "https://github.com/constructelligence-lab/revit-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/constructelligence-lab/revit-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/constructelligence-lab/revit-mcp/issues"
+  },
+  "bin": {
+    "revit-mcp": "server.mjs"
+  },
+  "files": [
+    "server.mjs",
+    "bridge.mjs",
+    "tools.mjs",
+    "prompts.mjs",
+    "resources.mjs",
+    "mock.mjs",
+    "demo.mjs",
+    "check-docs.mjs",
+    "tools-table.mjs",
+    "README.md"
+  ]
 }
