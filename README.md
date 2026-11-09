@@ -62,6 +62,13 @@ the model.
 
 ## Why this one
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/safety-lanes-dark.svg">
+    <img src="assets/safety-lanes-light.svg" alt="Three kinds of request: reads are always available, renders and exports use a temporary view that is rolled back, and writes need two switches, a preview, an explicit apply and one transaction" width="100%">
+  </picture>
+</p>
+
 | | |
 |---|---|
 | **Read-only until *two* switches are on** | The add-in refuses writes with `writes_disabled` before any Revit work, and the server refuses to call the write tool. Neither can open the gate alone. |
@@ -213,6 +220,13 @@ whole routine: plan, shoot, look, fix, choose.
 > with what Revit says if one is off.
 
 ## Photoreal renders with Blender
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/render-pipeline-dark.svg">
+    <img src="assets/render-pipeline-light.svg" alt="A Revit model is exported as glTF, rendered by Blender Cycles with the sun placed from the model's latitude, date and time, and the picture comes back to the assistant" width="100%">
+  </picture>
+</p>
 
 `render_scene` is Revit's own visual style: fast, and good for composing a shot. For a picture that looks
 like a photograph, `render_photoreal` hands the model to **Blender (Cycles)** on the same machine:
