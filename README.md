@@ -1,4 +1,4 @@
-# revit-mcp
+# revit-mcp: Revit MCP server for Claude, Cursor and AI assistants
 
 [![CI](https://github.com/constructelligence-lab/revit-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/constructelligence-lab/revit-mcp/actions/workflows/ci.yml)
 [![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
@@ -8,7 +8,19 @@
 
 <img src="assets/banner.svg" alt="revit-mcp — Autodesk Revit to any MCP client" width="100%">
 
-<p align="center"><strong>Autodesk Revit to any MCP client: read the model you have open — and, if you let it, change one parameter at a time.</strong></p>
+<p align="center"><strong>Connect Autodesk Revit to Claude, Cursor, VS Code and any Model Context Protocol (MCP) client: ask questions of the open BIM model, make photoreal renders and turntables, export PDF, IFC and glTF, and — only if you allow it — make small, previewed, undoable edits.</strong></p>
+
+**revit-mcp** is an open source (MIT) MCP server and Revit add-in for Revit 2024 to 2027. The model stays on your workstation: nothing is uploaded, and the assistant gets a narrow, auditable set of tools instead of free rein over a client's building.
+
+### What can you ask it?
+
+- *"Which rooms on Level 2 are over 40 m², and what are their departments?"* (`list_rooms`)
+- *"Take off the external wall areas by type."* (`geometry_quantities`, `wall_layers`)
+- *"Do the ducts clash with the structural framing on Level 3?"* (`check_clashes`)
+- *"Give me four golden-hour exterior renders, then a ray-traced version of the best one."* (`render_gallery`, `render_photoreal`)
+- *"Export the issued sheets as one PDF, and the model as IFC."* (`export_model`)
+- *"Make a door schedule with Mark, Type, Level and Fire Rating."* (`create_schedule`, previewed first)
+- *"Which Marks are empty? Fix them one at a time."* (`parameter_audit` prompt, `set_parameter`)
 
 Most "AI for BIM" asks you to upload a model somewhere, or to trust a cloud service with a client's building.
 This does the opposite. Revit stays where it is, the data stays on the workstation, and the assistant gets a
@@ -272,6 +284,22 @@ cd ../addin && dotnet build    # compiles against the real Revit 2025 reference 
 CI runs the server on Node 20 and 22, builds the add-in against Revit 2025, 2026 and 2027 plus .NET Framework
 4.8, and fails on documentation drift. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a tool, and
 [SECURITY.md](SECURITY.md) for reporting.
+
+## Frequently asked questions
+
+**Does it work with Claude Desktop, Claude Code and Cursor?** Yes: any MCP client that can launch a stdio server. See [docs/clients.md](docs/clients.md).
+
+**Which Revit versions are supported?** Revit 2024 (.NET Framework 4.8), 2025 and 2026 (.NET 8) and 2027 (.NET 10). CI builds all four against the real Revit API.
+
+**Is my model sent anywhere?** No. The add-in listens on loopback only. A hosted AI client sees only what a tool returns to it; see [docs/security.md](docs/security.md).
+
+**Can it change my model?** Not unless you turn writes on in two places. Even then, the only writes are `set_parameter` and `create_schedule`, both previewed first and undoable with one Ctrl+Z.
+
+**Can it make photorealistic renderings?** Yes, with Blender installed: `render_photoreal` and `render_turntable` export the model and render it with Cycles. See [docs/rendering.md](docs/rendering.md).
+
+**Is it an official Autodesk product?** No. Revit and Autodesk are trademarks of Autodesk, Inc.; this project is independent.
+
+**Can I try it without Revit?** Yes: `npm run demo` runs the full tool set against a sample model.
 
 ## Licence
 
