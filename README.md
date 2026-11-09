@@ -285,6 +285,25 @@ CI runs the server on Node 20 and 22, builds the add-in against Revit 2025, 2026
 4.8, and fails on documentation drift. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a tool, and
 [SECURITY.md](SECURITY.md) for reporting.
 
+## How it compares to other Revit MCP servers
+
+Several open source Revit MCP servers exist, and some are older, more widely used and more capable at
+changing models than this one. Figures below are from the GitHub API on 2026-11-09; read their READMEs
+for what they do today.
+
+| Project | Licence | Stars | Approach |
+|---|---|---|---|
+| [mcp-servers-for-revit/revit-mcp](https://github.com/mcp-servers-for-revit/revit-mcp) | MIT | 477 | TypeScript server; tools that create, modify and delete Revit elements |
+| [mcp-servers-for-revit/mcp-servers-for-revit](https://github.com/mcp-servers-for-revit/mcp-servers-for-revit) | MIT | 433 | A fork of the above with more tools and Revit 2020 to 2026 build targets |
+| [HorizunGroup/horizun-revit-mcp](https://github.com/HorizunGroup/horizun-revit-mcp) | Apache-2.0 | 82 | Windows installer with the runtime included; Revit 2023 to 2027 |
+| [bimwright/rvt-mcp](https://github.com/bimwright/rvt-mcp) | Apache-2.0 | 120 | Revit 2022 to 2027 |
+| **constructelligence-lab/revit-mcp** (this) | MIT | 1 | Read-only until two switches are on; photoreal renders and turntables through Blender; PDF, IFC and glTF export; a sample model so everything is testable without Revit |
+
+**Choose this one** if you want the assistant to read and picture a model without being able to edit it by
+default, or you want renderings. **Choose another** if you need the assistant to build or delete model
+elements, or you want a packaged installer: this project currently has neither (you build the add-in with
+`dotnet build`), and its add-in has not yet been run against a live Revit by its author.
+
 ## Frequently asked questions
 
 **Does it work with Claude Desktop, Claude Code and Cursor?** Yes: any MCP client that can launch a stdio server. See [docs/clients.md](docs/clients.md).
