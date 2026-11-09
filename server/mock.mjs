@@ -282,7 +282,7 @@ export class MockRevit {
       elements_scanned: 132,
       bounds: { min: [0, 0, 0], max: [30000, 20000, 10800] },
       true_north_degrees: 0,
-      site: { latitude: 53.34981, longitude: -6.26031, place: 'Dublin, Ireland' },
+      site: { latitude: 39.0997, longitude: -94.5786, place: 'Kansas City, USA' },
       levels: LEVELS,
       rooms: [
         { id: 100201, name: 'Office', number: '101', level: 'L1', centre: [6000, 5000, 0], area_m2: 42.5 },

@@ -14,15 +14,15 @@ import { MockRevit } from '../mock.mjs';
 
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
-test('the sun is where an almanac says: solstice noon in Dublin, equinox sunrise side, winter low', () => {
-  const noon = sunPosition(53.35, 6, 21, 12);
-  assert.ok(Math.abs(noon.elevation - 60.1) < 0.8, `elevation ${noon.elevation}`);
+test('the sun is where an almanac says: solstice noon, equinox morning and evening, winter low', () => {
+  const noon = sunPosition(39.1, 6, 21, 12);
+  assert.ok(Math.abs(noon.elevation - 74.3) < 0.8, `elevation ${noon.elevation}`);
   assert.ok(Math.abs(noon.azimuth - 180) < 1, `azimuth ${noon.azimuth}`);
-  const morning = sunPosition(53.35, 3, 20, 8);
+  const morning = sunPosition(39.1, 3, 20, 8);
   assert.ok(morning.azimuth > 90 && morning.azimuth < 130, `morning sun is east-south-east, got ${morning.azimuth}`);
-  const afternoon = sunPosition(53.35, 3, 20, 16);
+  const afternoon = sunPosition(39.1, 3, 20, 16);
   assert.ok(afternoon.azimuth > 230 && afternoon.azimuth < 270, `afternoon sun is west-south-west, got ${afternoon.azimuth}`);
-  assert.ok(sunPosition(53.35, 12, 21, 12).elevation < 15, 'a Dublin winter noon is low');
+  assert.ok(sunPosition(39.1, 12, 21, 12).elevation < 30, 'a mid-latitude winter noon is low');
   assert.ok(sunPosition(-33.9, 12, 21, 12).elevation > 75, 'and a Sydney summer noon is high');
 });
 
@@ -45,7 +45,7 @@ test('a job carries the camera in metres, the sun from the site latitude, and th
   assert.equal(job.samples, QUALITY.draft.samples);
   assert.equal(job.sun.hour, 19);
   assert.ok(job.sun.elevation > 0 && job.sun.elevation < 25, `evening sun is low, got ${job.sun.elevation}`);
-  assert.ok(job.sun.azimuth > 270 && job.sun.azimuth < 330, `evening sun is north-west in Dublin in June, got ${job.sun.azimuth}`);
+  assert.ok(job.sun.azimuth > 270 && job.sun.azimuth < 330, `evening sun is north-west in June, got ${job.sun.azimuth}`);
   const overcast = buildJob({ gltf: 'g', scene, camera: { eye: [0, 0, 1], target: [1, 1, 1] }, mood: 'overcast', output: 'o' });
   assert.equal(overcast.overcast, true);
   assert.throws(() => buildJob({ gltf: 'g', scene, camera: { eye: [0, 0, 1], target: [1, 1, 1] }, quality: 'ludicrous', output: 'o' }), /Unknown quality/);
