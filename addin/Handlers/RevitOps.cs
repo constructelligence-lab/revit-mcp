@@ -19,7 +19,7 @@ public sealed class RevitOpException(string code, string message) : Exception(me
 public static partial class RevitOps
 {
     /// <summary>The ops that change the model. Kept as a list in one place: the bridge refuses these before dispatch when writes are off.</summary>
-    private static readonly HashSet<string> Writes = new(StringComparer.Ordinal) { "parameter.set" };
+    private static readonly HashSet<string> Writes = new(StringComparer.Ordinal) { "parameter.set", "schedule.create" };
 
     public static bool IsWrite(string op) => Writes.Contains(op);
 
@@ -41,6 +41,17 @@ public static partial class RevitOps
         "view.export_image" => ExportViewImage(app, args),
         "scene.info" => SceneInfo(app, args),
         "scene.render" => RenderScene(app, args),
+        "rooms.list" => Rooms(app, args),
+        "structure.list" => Structure(app, args),
+        "materials.list" => Materials(app, args),
+        "wall.layers" => WallLayers(app, args),
+        "geometry.quantities" => GeometryQuantities(app, args),
+        "clash.check" => CheckClashes(app, args),
+        "export.pdf" => ExportPdf(app, args),
+        "export.dwg" => ExportDwg(app, args),
+        "export.ifc" => ExportIfc(app, args),
+        "export.gltf" => ExportGltf(app, args),
+        "schedule.create" => CreateSchedule(app, args),
         "parameter.set" => SetParameter(app, args),
         _ => throw new RevitOpException("unknown_op", $"Unknown operation '{op}'. See docs/protocol.md."),
     };

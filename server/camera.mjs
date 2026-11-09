@@ -148,3 +148,24 @@ export function buildRenderArgs(scene, input = {}) {
   if (input.name && planned) base.name = input.name;
   return { args: base, planned };
 }
+
+/**
+ * Where the sun is, from latitude, longitude, date and local SOLAR time. Standard declination/hour-angle
+ * maths, good to a degree or two, which is plenty for a picture and honest about what it is: it ignores
+ * time zones, daylight saving and the equation of time, so `hour` means "hours by the sun, noon at 12".
+ * Azimuth is compass degrees clockwise from north; elevation is degrees above the horizon.
+ */
+export function sunPosition(latitude, month, day, hour) {
+  const rad = Math.PI / 180;
+  const dayOfYear = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 0)) / 86400000);
+  const declination = 23.44 * Math.sin(2 * Math.PI * (284 + dayOfYear) / 365) * rad;
+  const hourAngle = 15 * (hour - 12) * rad;
+  const phi = latitude * rad;
+  const sinEl = Math.sin(phi) * Math.sin(declination) + Math.cos(phi) * Math.cos(declination) * Math.cos(hourAngle);
+  const elevation = Math.asin(Math.max(-1, Math.min(1, sinEl)));
+  const cosEl = Math.cos(elevation) || 1e-9;
+  const sinAz = -Math.cos(declination) * Math.sin(hourAngle) / cosEl;
+  const cosAz = (Math.sin(declination) - sinEl * Math.sin(phi)) / (cosEl * Math.cos(phi) || 1e-9);
+  const azimuth = (Math.atan2(sinAz, cosAz) / rad + 360) % 360;
+  return { elevation: Math.round(elevation / rad * 100) / 100, azimuth: Math.round(azimuth * 100) / 100 };
+}

@@ -20,7 +20,7 @@ an op without a handler, fails the test suite rather than at 7am on a deadline.
 
 ```json
 { "ok": true, "result": {
-    "bridge": { "version": "0.2.0", "pid": 4711, "writesAllowed": false, "port": 8712, "mock": false },
+    "bridge": { "version": "0.3.0", "pid": 4711, "writesAllowed": false, "port": 8712, "mock": false },
     "revit": { "version": "2025", "document": "Tower.rvt", "path": "C:\\Projects\\Tower.rvt",
                "units": "autodesk.spec.aec:length-millimeters", "workshared": true,
                "activeView": "L2 - Floor Plan", "modified": true },
@@ -96,7 +96,17 @@ Args are JSON; all are optional unless marked required. Lengths are in the docum
 | `view.export_image` | `view`, `width` | Writes a PNG under `%TEMP%\revit-mcp` and returns the path Revit wrote |
 | `scene.info` | `room_limit` | Bounds of the model's elements, true north, site latitude/longitude, levels, room centres, existing 3D views |
 | `scene.render` | `eye`, `target` **required** (`[x, y, z]` in the document unit); `perspective`, `style`, `sun`, `background`, `outlines`, `hide_categories`, `section_box`, `width`, `format`, `name` | Builds a temporary 3D view, exports it, rolls it back (`model_changed: false`); returns the image path. 180 s timeout |
+| `rooms.list` | `level`, `boundaries`, `limit` | Rooms: number, name, level, department, area, perimeter, volume; optional boundary loops |
+| `structure.list` | `kind` **required** (`grids`, `links`, `phases`, `design_options`, `worksets`, `revisions`), `limit` | Rows for that kind |
+| `materials.list` | `name`, `limit` | Materials: class, colour, transparency |
+| `wall.layers` | `element_id` **required** | Layer function, material and thickness for a wall, floor, roof or ceiling type |
+| `geometry.quantities` | `category` **required**, `level` | Count, area (m²), volume (m³), length by type, from Revit's computed values |
+| `clash.check` | `category_a`, `category_b` **required**, `level`, `limit` | Intersecting element pairs (`ElementIntersectsElementFilter`), sampled on large models |
+| `export.pdf` / `export.dwg` | `sheets`, `views`, `name`, `separate` (pdf) | Files under `%TEMP%\revit-mcp\exports`; 180 s timeout |
+| `export.ifc` | `name` | IFC4 file, same folder |
+| `export.gltf` | `name`, `hide_categories`, `section_box` | glTF 2.0 (`.gltf` + `.bin`), metres, Y-up, materials as PBR colours; links skipped |
+| `schedule.create` | `category`, `fields` **required**, `name`, `sort_by`, `apply` (default false) | **Write.** Preview lists matched and missing fields; `apply: true` adds the schedule in one transaction |
 | `parameter.set` | `element_id`, `parameter`, `value` **required**, `apply` (default false) | Preview: old and new value. `apply: true`: one transaction, `applied: true` |
 
-`scene.render` is not in the write set: it runs inside a `TransactionGroup` that is always rolled back, so nothing it creates survives. `parameter.set` is the only op in the write set (see `RevitOps.Writes`). Adding another means changing that
+`scene.render` is not in the write set: it runs inside a `TransactionGroup` that is always rolled back, so nothing it creates survives. `parameter.set` and `schedule.create` are the only ops in the write set (see `RevitOps.Writes`). Adding another means changing that
 list, the tool catalogue and `docs/security.md` together — the tests fail if they disagree.

@@ -20,7 +20,7 @@ public static partial class RevitOps
         {
             bridge = new
             {
-                version = typeof(RevitOps).Assembly.GetName().Version?.ToString(3) ?? "0.2.0",
+                version = typeof(RevitOps).Assembly.GetName().Version?.ToString(3) ?? "0.3.0",
                 pid = Compat.ProcessId,
                 writesAllowed = settings.AllowWrites,
                 port = settings.Port,

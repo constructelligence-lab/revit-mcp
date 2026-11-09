@@ -231,6 +231,169 @@ export const TOOLS = [
     },
   },
   {
+    name: 'list_rooms',
+    title: 'List rooms',
+    op: 'rooms.list',
+    write: false,
+    description:
+      'Rooms with number, name, level, department, area (m²), perimeter and volume, plus the total area. Pass boundaries: true for each room\'s '
+      + 'boundary loops (start and end points of every segment) when you need the shape, for finishes or take-off. Unplaced and unenclosed rooms are not listed.',
+    params: {
+      level: z.string().optional().describe('Only this level, e.g. "L2"'),
+      boundaries: z.boolean().optional().describe('Include boundary loops (larger answer)'),
+      limit,
+    },
+  },
+  {
+    name: 'project_structure',
+    title: 'Project structure',
+    op: 'structure.list',
+    write: false,
+    description:
+      'How the project is organised, one kind at a time: grids (with end points), links (Revit links with loaded state, and CAD links/imports), phases, '
+      + 'design options, worksets (owner, open, editable; only in workshared models) or revisions (number, date, description, issued). Read-only.',
+    params: {
+      kind: z.enum(['grids', 'links', 'phases', 'design_options', 'worksets', 'revisions']).describe('Which part of the structure'),
+      limit,
+    },
+  },
+  {
+    name: 'list_materials',
+    title: 'List materials',
+    op: 'materials.list',
+    write: false,
+    description: 'Materials in the model with class, colour, transparency and whether they carry a rendering appearance. Use it before choosing what to call a finish.',
+    params: { name: z.string().optional().describe('Substring to match, e.g. "brick"'), limit },
+  },
+  {
+    name: 'wall_layers',
+    title: 'Layer build-up',
+    op: 'wall.layers',
+    write: false,
+    description: 'The layered build-up of a wall, floor, roof or ceiling element: each layer\'s function, material and thickness, and the total. Give the id of an element of that type (from query_elements).',
+    params: { element_id: elementId },
+  },
+  {
+    name: 'geometry_quantities',
+    title: 'Geometry quantities',
+    op: 'geometry.quantities',
+    write: false,
+    description:
+      'Count, area (m²), volume (m³) and length by type for one category, optionally on one level, from Revit\'s own computed values, so they agree with the model\'s schedules. '
+      + 'Use it for quick take-offs of walls, floors, slabs and framing when no schedule exists; read_schedule is better when one does.',
+    params: {
+      category: z.string().describe('Model category, e.g. "Walls", "Floors", "Structural Framing"'),
+      level: z.string().optional().describe('Only this level'),
+    },
+  },
+  {
+    name: 'check_clashes',
+    title: 'Check clashes',
+    op: 'clash.check',
+    write: false,
+    description:
+      'Geometric intersections between two categories in this document, e.g. Ducts against Structural Framing. Returns pairs with ids and levels. Intersecting is a prompt to look, '
+      + 'not a defect: a door intersects its wall by design. Does not look into links. Large models are sampled (the answer says so).',
+    params: {
+      category_a: z.string().describe('First category, e.g. "Ducts"'),
+      category_b: z.string().describe('Second category, e.g. "Structural Framing"'),
+      level: z.string().optional().describe('Only elements of A on this level'),
+      limit: z.number().int().min(1).max(300).optional().describe('Most clash pairs to return (default 50)'),
+    },
+  },
+  {
+    name: 'export_model',
+    title: 'Export model',
+    op: 'export.file',
+    kind: 'export',
+    write: false,
+    description:
+      'Write the model out as a file on the Revit machine: pdf (sheets), dwg (sheets or views), ifc (IFC4) or gltf (3D geometry with materials, for Blender, Unreal or '
+      + 'Twinmotion). Returns the file paths. Nothing in the model changes: temporary views are rolled back. Name sheets by number to avoid exporting the whole set.',
+    params: {
+      format: z.enum(['pdf', 'dwg', 'ifc', 'gltf']).describe('File format'),
+      sheets: z.array(z.string()).max(60).optional().describe('Sheet numbers or names (pdf, dwg); default all sheets'),
+      views: z.array(z.string()).max(60).optional().describe('View names (pdf, dwg)'),
+      separate: z.boolean().optional().describe('pdf: one file per sheet instead of one combined file'),
+      name: z.string().max(80).optional().describe('File name stem'),
+      hide_categories: z.array(z.string()).max(30).optional().describe('gltf: categories to leave out, e.g. ["Furniture"]'),
+      section_box: z.object({ min: z.array(z.number()).length(3), max: z.array(z.number()).length(3) }).optional().describe('gltf: export only this box (document units)'),
+    },
+  },
+  {
+    name: 'render_photoreal',
+    title: 'Photoreal render',
+    op: 'scene.photoreal',
+    kind: 'photoreal',
+    write: false,
+    description:
+      'A physically-based, ray-traced picture of the model, made on this machine: the add-in exports the geometry and materials, then Blender (Cycles) renders it with a physical sky, the sun placed from the model\'s '
+      + 'real latitude, the date and time, real glass, ground, filmic colour, bloom and vignette. Same camera options as render_scene (a preset, or eye and target). It is much slower than render_scene: '
+      + 'use quality draft to compose the shot, standard or final once it is right. Needs Blender installed (or BLENDER_PATH set). The model is not changed.',
+    params: {
+      preset: z.enum(PRESETS).optional().describe('A named shot'),
+      room: z.string().optional().describe('For preset interior: room name, number or id'),
+      look: z.enum(['north', 'south', 'east', 'west']).optional(),
+      eye: z.array(z.number()).length(3).optional().describe('Camera [x, y, z] in the document length unit'),
+      target: z.array(z.number()).length(3).optional().describe('Look-at point [x, y, z]'),
+      mood: z.enum(Object.keys(MOODS)).optional().describe('Light together with sky: day, morning, golden_hour, overcast, winter'),
+      sun: z.object({
+        month: z.number().int().min(1).max(12).optional(),
+        day: z.number().int().min(1).max(28).optional(),
+        hour: z.number().min(0).max(23.99).optional().describe('Hours by the sun: 12 is solar noon'),
+        intensity: z.number().int().min(0).max(100).optional(),
+      }).optional(),
+      quality: z.enum(['draft', 'standard', 'final']).optional().describe('draft ~48 samples, standard 160 (default), final 512'),
+      width: z.number().int().min(480).max(3840).optional().describe('Image width in pixels (default 1920)'),
+      ground: z.enum(['grass', 'concrete', 'sand', 'none']).optional().describe('Ground plane (default grass; use none for interiors)'),
+      exposure: z.number().min(-3).max(3).optional().describe('Exposure compensation in stops'),
+      gpu: z.boolean().optional().describe('Use the GPU if Blender finds one (much faster)'),
+      hide_categories: z.array(z.string()).max(30).optional().describe('Categories to leave out of the 3D export'),
+      section_box: z.object({ min: z.array(z.number()).length(3), max: z.array(z.number()).length(3) }).optional(),
+      name: z.string().max(60).optional(),
+    },
+  },
+  {
+    name: 'render_turntable',
+    title: 'Turntable',
+    op: 'scene.turntable',
+    kind: 'turntable',
+    write: false,
+    description:
+      'A turntable: the camera orbits the building at the height and distance of the chosen shot, rendered by Blender as a frame sequence (and an MP4 if ffmpeg is installed). '
+      + 'Slow: each frame is a full render, so use quality draft and 24 to 36 frames first. Returns the folder, and a still from the middle so you can check the framing.',
+    params: {
+      preset: z.enum(PRESETS).optional().describe('Starting shot; its distance and height are kept (default aerial_se)'),
+      eye: z.array(z.number()).length(3).optional(),
+      target: z.array(z.number()).length(3).optional(),
+      frames: z.number().int().min(8).max(240).optional().describe('Frames for a full turn (default 36)'),
+      fps: z.number().int().min(8).max(60).optional().describe('MP4 frame rate (default 24)'),
+      mood: z.enum(Object.keys(MOODS)).optional(),
+      quality: z.enum(['draft', 'standard', 'final']).optional(),
+      width: z.number().int().min(480).max(1920).optional().describe('Frame width (default 1280)'),
+      ground: z.enum(['grass', 'concrete', 'sand', 'none']).optional(),
+      gpu: z.boolean().optional(),
+      hide_categories: z.array(z.string()).max(30).optional(),
+    },
+  },
+  {
+    name: 'create_schedule',
+    title: 'Create schedule',
+    op: 'schedule.create',
+    write: true,
+    description:
+      'Make a new schedule of one category with the columns you name (parameter names, as Revit calls them). Preview by default (apply: false): it checks the fields exist and '
+      + 'lists the ones that do, so fix names first; with apply: true it adds the schedule view in one transaction, one Ctrl+Z removes it. Requires writes to be enabled on both the server and the add-in. '
+      + 'Adds a view to the model, so say what you will create and get a yes before applying.',
+    params: {
+      category: z.string().describe('Model category, e.g. "Doors"'),
+      fields: z.array(z.string()).min(1).max(30).describe('Column parameter names, e.g. ["Mark", "Type", "Level", "Fire Rating"]'),
+      name: z.string().max(80).optional().describe('Schedule name (default: Revit\'s)'),
+      sort_by: z.string().optional().describe('One of the fields to sort by'),
+      apply: z.boolean().optional().describe('false (default) previews; true creates it'),
+    },
+  },
+  {
     name: 'set_parameter',
     title: 'Set parameter',
     op: 'parameter.set',

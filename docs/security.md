@@ -21,9 +21,10 @@ hosted model at a client's building.
 |---|---|---|
 | Loopback bind | always | No other machine can reach the bridge, whatever the firewall says |
 | Bearer token | generated on first run | A different local user, or a stray process, cannot drive the bridge |
-| Read-only | **on** | A fresh install cannot change anything; `parameter.set` is refused with `writes_disabled` before any Revit work |
+| Read-only | **on** | A fresh install cannot change anything; `parameter.set` and `schedule.create` are refused with `writes_disabled` before any Revit work |
 | Write opt-in in two places | off | The add-in (`settings.json`) and the MCP server (`--allow-writes`) must both allow it — neither can open the gate alone |
 | Preview by default | on | `parameter.set` answers with the old and new value; the change needs `apply: true` |
+| Renders and exports are not writes | always | `scene.render` and `export.*` use temporary views inside a `TransactionGroup` that is always rolled back. Their lasting effect is files under `%TEMP%\revit-mcp`, which hold model content: delete them when a project ends |
 | One transaction per write | always | One Ctrl+Z in Revit undoes it; a refusal happens before the transaction opens |
 | Instance parameters only | always | A type parameter would change every instance of that type; that is not a change to make over a socket |
 | No create, delete, move, save, sync | always | v0.1 has no op for any of them |

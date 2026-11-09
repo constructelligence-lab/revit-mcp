@@ -6,6 +6,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Added
+
+- **Photoreal renders.** `render_photoreal` exports the model as glTF and renders it with Blender Cycles on
+  the same machine: physical sky, the sun placed from the model's latitude, the date and time, real glass,
+  ground, AgX colour, bloom and vignette. `render_turntable` makes a frame sequence (and an MP4 with ffmpeg).
+- **`export_model`**: PDF, DWG, IFC (IFC4) and glTF (geometry with materials) to files on the Revit machine.
+  Nothing in the model changes.
+- **More of the model, read-only:** `list_rooms` (with boundary loops), `project_structure` (grids, links,
+  phases, design options, worksets, revisions), `list_materials`, `wall_layers` (layer build-ups),
+  `geometry_quantities` (area, volume, length by type) and `check_clashes` (category against category).
+- **`create_schedule`**: a second gated write. Previewed unless `apply: true`, one transaction.
+- Camera: sun position from latitude, date and solar time (`sunPosition`). 10 new tools, 10 new tests (43).
+- `docs/rendering.md`.
+
 ## [0.2.0]
 
 ### Added

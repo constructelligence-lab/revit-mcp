@@ -165,7 +165,7 @@ public sealed class BridgeServer : IDisposable
 
         try
         {
-            var timeout = RevitOps.IsWrite(op) ? WriteTimeout : op == "scene.render" ? RenderTimeout : ReadTimeout;
+            var timeout = RevitOps.IsWrite(op) ? WriteTimeout : op is "scene.render" or "export.gltf" or "export.pdf" or "export.ifc" or "export.dwg" ? RenderTimeout : ReadTimeout;
             var result = await OnRevitThread(app => RevitOps.Run(app, _settings, op, args), timeout, _stop.Token);
             await WriteAsync(context, 200, new { ok = true, result });
         }

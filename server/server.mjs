@@ -19,9 +19,12 @@ import { RESOURCES } from './resources.mjs';
 import { Bridge, DEFAULT_BRIDGE_URL, DEFAULT_TIMEOUT_MS, discoverToken, TOKEN_FILE } from './bridge.mjs';
 import { MockRevit } from './mock.mjs';
 import { buildRenderArgs } from './camera.mjs';
+import { findBlender, buildJob, runBlender, encodeMp4, BLENDER_MISSING } from './blender.mjs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { readFileSync, statSync } from 'node:fs';
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
 
 const INSTRUCTIONS = [
   'revit-mcp reads the Autodesk Revit model the user has open, and can change one parameter at a time if the operator allowed it.',
@@ -104,8 +107,19 @@ const withImages = (value, paths) => {
 
 const DEFAULT_GALLERY = ['exterior_ne', 'exterior_nw', 'exterior_se', 'exterior_sw'];
 
-/** Tools that are more than one bridge call: they plan a camera from the model, then render. */
-async function runComposite(tool, input, bridge) {
+const EXPORT_TIMEOUT_MS = 300_000;
+
+const ENGINE = { find: findBlender, run: runBlender, mp4: encodeMp4 };
+
+/** Tools that are more than one bridge call: they plan a camera from the model, then render or export. */
+async function runComposite(tool, input, bridge, engine = ENGINE) {
+  if (tool.kind === 'export') {
+    const { format, ...rest } = input;
+    const result = await bridge.call(`export.${format}`, rest, { timeoutMs: EXPORT_TIMEOUT_MS });
+    return asText(result);
+  }
+  if (tool.kind === 'photoreal' || tool.kind === 'turntable') return runBlenderTool(tool, input, bridge, engine);
+
   const scene = tool.kind === 'render' && !input.preset ? null : await bridge.call('scene.info', {});
   if (tool.kind === 'render') {
     const { args } = buildRenderArgs(scene, input);
@@ -126,13 +140,59 @@ async function runComposite(tool, input, bridge) {
   return withImages({ shots }, shots.map(s => s.path));
 }
 
+/**
+ * Ray-traced pictures. The add-in exports the geometry once; Blender renders it here. Failures say what to
+ * do (install Blender, lower the quality) rather than surfacing a stack trace.
+ */
+async function runBlenderTool(tool, input, bridge, engine) {
+  const exe = engine.find();
+  if (!exe) return asError(BLENDER_MISSING, { code: 'blender_missing' });
+
+  const turntable = tool.kind === 'turntable';
+  const scene = await bridge.call('scene.info', {});
+  const wanted = turntable && !input.preset && !input.eye ? { ...input, preset: 'aerial_se' } : input;
+  const { args, planned } = buildRenderArgs(scene, wanted);
+
+  const exported = await bridge.call('export.gltf', {
+    name: args.name ?? 'scene',
+    ...(input.hide_categories ? { hide_categories: input.hide_categories } : {}),
+    ...(input.section_box ? { section_box: input.section_box } : {}),
+  }, { timeoutMs: EXPORT_TIMEOUT_MS });
+  const gltf = exported?.extra?.gltf ?? exported?.files?.map(f => f.path).find(p => p.endsWith('.gltf'));
+  if (!gltf) return asError('The add-in did not return a glTF file path.', { code: 'export_failed' });
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const output = turntable ? join(tmpdir(), 'revit-mcp', `turntable-${stamp}`) : join(tmpdir(), 'revit-mcp', `photoreal-${args.name ?? 'render'}-${stamp}.png`);
+  const job = buildJob({
+    gltf, scene, camera: { eye: args.eye, target: args.target }, mood: input.mood, sun: args.sun,
+    quality: input.quality ?? (turntable ? 'draft' : 'standard'),
+    width: input.width ?? (turntable ? 1280 : 1920),
+    ground: input.ground ?? 'grass', exposure: input.exposure ?? 0, gpu: Boolean(input.gpu), output,
+    turntable: turntable ? { frames: input.frames ?? 36 } : null,
+  });
+
+  const result = await engine.run({ exe, job });
+  const summary = {
+    engine: 'Blender Cycles', quality: input.quality ?? (turntable ? 'draft' : 'standard'), device: result.device,
+    camera: { eye: args.eye, target: args.target, shot: planned?.name ?? args.name },
+    sun: job.sun, geometry: gltf, model_changed: false, notes: result.notes,
+  };
+  if (!turntable) return withImages({ ...summary, path: result.path, width: job.width, height: job.height }, [result.path]);
+
+  const mp4 = await engine.mp4({ framesDir: result.frames_dir, fps: input.fps ?? 24 });
+  return withImages({
+    ...summary, frames_dir: result.frames_dir, frames: result.frames, mp4,
+    ...(mp4 ? {} : { mp4_note: 'ffmpeg was not found, so there is no MP4: the frames are in frames_dir (frame_0001.png …). Install ffmpeg or set FFMPEG_PATH to encode them.' }),
+  }, [result.middle]);
+}
+
 const asError = (message, extra = {}) => ({ content: [{ type: 'text', text: JSON.stringify({ error: message, ...extra }, null, 2) }], isError: true });
 
 /**
  * The MCP server: the tool menu, the prompt menu (the workflows people actually run), live resources, and
  * the write gate in one place.
  */
-export function buildServer({ bridge, allowWrites = false, version = VERSION } = {}) {
+export function buildServer({ bridge, allowWrites = false, version = VERSION, engine = ENGINE } = {}) {
   const server = new McpServer({ name: 'revit-mcp', version }, { instructions: INSTRUCTIONS });
 
   registerPrompts(server);
@@ -152,7 +212,7 @@ export function buildServer({ bridge, allowWrites = false, version = VERSION } =
         );
       }
       try {
-        if (tool.kind) return await runComposite(tool, input ?? {}, bridge);
+        if (tool.kind) return await runComposite(tool, input ?? {}, bridge, engine);
         const result = await bridge.call(tool.op, input ?? {});
         // A view export is a picture: hand the client the image, not just a path on another process's disk.
         return tool.op === 'view.export_image' ? withImages(result, [result?.path]) : asText(result);

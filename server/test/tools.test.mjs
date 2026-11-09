@@ -24,12 +24,13 @@ test('every tool is fully described and named like an MCP tool', () => {
   }
 });
 
-test('the only tool that changes the model is set_parameter, and it previews by default', () => {
-  assert.deepEqual(WRITE_TOOLS.map(t => t.name), ['set_parameter']);
-  const schema = WRITE_TOOLS[0].params;
-  assert.ok('apply' in schema, 'set_parameter must take an apply flag');
-  // The description has to tell the model that the default is a preview, or an agent will assume a change.
-  assert.match(WRITE_TOOLS[0].description, /preview/i);
+test('the only tools that change the model are set_parameter and create_schedule, and both preview by default', () => {
+  assert.deepEqual(WRITE_TOOLS.map(t => t.name).sort(), ['create_schedule', 'set_parameter']);
+  for (const tool of WRITE_TOOLS) {
+    assert.ok('apply' in tool.params, `${tool.name} must take an apply flag`);
+    // The description has to tell the model that the default is a preview, or an agent will assume a change.
+    assert.match(tool.description, /preview/i, `${tool.name} must say it previews`);
+  }
 });
 
 test('query_elements demands a category and rejects a paging abuse', () => {

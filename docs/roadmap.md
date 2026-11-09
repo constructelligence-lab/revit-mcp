@@ -11,12 +11,19 @@ What exists, what is next, and what is deliberately not planned — so you can j
 - Sample model for demos, CI and tests with no Revit installed; 33 tests in v0.2
 - `docs/protocol.md` (the contract), `docs/security.md` (what is and is not protected)
 
+## v0.3 — shipped
+
+- Photoreal renders and turntables through Blender (Cycles) with the sun from the model's latitude and date
+- `export_model`: PDF, DWG, IFC4 and glTF
+- `list_rooms` (with boundaries), `project_structure`, `list_materials`, `wall_layers`, `geometry_quantities`,
+  `check_clashes`, and `create_schedule` (a second gated write)
+
 ## Next
 
 1. **Family type parameters**, with the sentence that matters: *"this changes 14 instances of Single-Flush
    0915 × 2134mm"* and an explicit yes. The refusal text is already written; the tool is not.
-2. **Sheet and PDF export** — `export_sheet_pdf`, because issuing a set is the next thing people ask for.
-3. **Rooms and boundaries** — room list with area, level, department; boundary loops for take-off.
+2. **Textures in the glTF export**, so brick looks like brick (needs the appearance asset's image paths).
+3. **Link-aware reads and exports**: look into Revit links for clashes, rooms and geometry.
 4. **Dimensions and grids** — read, not write: what is dimensioned, what is on a grid line.
 5. **Change journal** — every write recorded locally with document, element, parameter, old value, new value,
    so a session can be reviewed afterwards, not just undone.

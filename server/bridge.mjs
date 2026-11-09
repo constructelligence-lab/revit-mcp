@@ -16,7 +16,7 @@ export const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8712';
 export const DEFAULT_TIMEOUT_MS = 30_000;
 /** The add-in writes its bearer token here on first run; the server reads it unless REVIT_MCP_TOKEN is set. */
 export const TOKEN_FILE = join(homedir(), '.revit-mcp', 'token');
-export const BRIDGE_VERSION = '0.2.0';
+export const BRIDGE_VERSION = '0.3.0';
 
 export class BridgeError extends Error {
   constructor(message, { code = 'bridge_error', status } = {}) {

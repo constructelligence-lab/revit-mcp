@@ -20,11 +20,11 @@ Because a file is a snapshot and the interesting questions ("what is selected", 
 session have", "what does this schedule compute") are answered by a running Revit. It also avoids writing a
 second, worse Revit.
 
-**Why is there only one write tool?**
-Because "an AI changed our model" should be a small, reviewable sentence. `set_parameter` covers the majority
-of useful edits (Marks, Comments, Fire Rating, status parameters), previews by default, runs in one
-transaction, and refuses type parameters — a type change silently rewrites every instance. Create, delete,
-move, save and sync are deliberately absent; they are decisions for a person in Revit.
+**Why are there so few write tools?**
+There are two. Because "an AI changed our model" should be a small, reviewable sentence. `set_parameter` covers the majority
+of useful edits (Marks, Comments, Fire Rating, status parameters) and `create_schedule` adds one schedule view; both preview by default, runs in one
+transaction, and refuses type parameters — a type change silently rewrites every instance. Delete,
+move, save and sync are deliberately absent, and creating model elements is on the roadmap behind an approval step; they are decisions for a person in Revit.
 
 **Can it change a family type parameter?**
 Not yet. When it does, it will say "this changes N instances" and ask, because that is the sentence a person
