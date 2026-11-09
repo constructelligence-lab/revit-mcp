@@ -27,7 +27,12 @@ This does the opposite. Revit stays where it is, the data stays on the workstati
 narrow, auditable set of reads plus two small writes: off by default, previewed before it happens, applied in
 a single undoable transaction.
 
-<img src="assets/diagram.svg" alt="An AI client speaks MCP over stdio to the MCP server, which speaks HTTP over loopback to the add-in inside Revit, which uses the Revit API on Revit's own thread to read and edit the open model" width="100%">
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-dark.svg">
+    <img src="assets/architecture-light.svg" alt="An AI client speaks MCP over stdio to the MCP server, which speaks HTTP over loopback to the add-in inside Revit, which uses the Revit API on Revit's own thread; Blender is an optional local renderer" width="100%">
+  </picture>
+</p>
 
 ## How it works
 
@@ -133,6 +138,13 @@ variables and the Windows path variants: [docs/clients.md](docs/clients.md).
 
 To allow writes, add `--allow-writes` **and** set `"allowWrites": true` in
 `%APPDATA%\revit-mcp\settings.json`, then restart both. Either switch alone leaves the bridge read-only.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/tool-map-dark.svg">
+    <img src="assets/tool-map-light.svg" alt="The 28 tools in revit-mcp: 19 that read the model and its structure, 6 for pictures, 1 export tool, and 2 gated write tools" width="100%">
+  </picture>
+</p>
 
 <!-- Generated from server/tools.mjs by `npm run tools:table` — do not edit by hand. -->
 ## The menu

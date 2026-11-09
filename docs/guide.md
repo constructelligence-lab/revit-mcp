@@ -13,7 +13,12 @@ first real conversation.
 - [The house rules](#the-house-rules)
 - [When something is wrong](#when-something-is-wrong)
 
-<img src="../assets/diagram.svg" alt="AI client → MCP server → Revit add-in → Revit" width="100%">
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../assets/architecture-dark.svg">
+    <img src="../assets/architecture-light.svg" alt="AI client to MCP server to Revit add-in to Revit" width="100%">
+  </picture>
+</p>
 
 ## What you need
 

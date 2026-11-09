@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerates the diagrams in assets/ (light and dark SVG). No dependencies: python3 scripts/make_graphics.py"""
+"""Regenerates the diagrams in assets/ (light and dark SVG). Run from anywhere: python3 scripts/make_graphics.py
+No dependencies. Diagrams that show data read it from this repository, so they cannot drift."""
 # ── svg kit: a small, dependency-free set of helpers for clean, Apple-style diagrams ─────────────────────────
 # Light and dark themes, system font stack, soft cards, Apple system colours. Every graphic is generated, so it
 # can be reproduced and, where it shows data, regenerated from that data.
@@ -231,7 +232,78 @@ def make_lanes(theme):
     return c
 
 
+def make_architecture(theme):
+    W, H = 1200, 520
+    c = Canvas(W, H, theme, "How revit-mcp is put together",
+               "An AI client speaks MCP over stdio to a Node server on the same machine, which speaks HTTP over loopback to a C# add-in inside Revit, which uses the Revit API on Revit's own thread. Blender is an optional local renderer.")
+    t = c.t
+    c.text(56, 84, "Two processes, one workstation", 40, 700, spacing=-0.7)
+    c.text(56, 118, "The Revit API lives inside Revit and is single-threaded, so the AI protocol and the model are kept apart.", 17, 400, t["sub"])
+    c.add(f'<rect x="40" y="148" width="1120" height="276" rx="26" fill="none" stroke="{t["faint"]}" stroke-width="1.5" stroke-dasharray="6 6"/>')
+    c.text(64, 176, "YOUR WORKSTATION", 11.5, 700, t["sub"], spacing=1.2)
+    cw, gap, y, h = 206, 82, 196, 190
+    cards = [("AI CLIENT", "Any MCP client", ["Claude, Cursor, VS Code.", "May be a hosted model:", "it sees what a tool returns."], "purple"),
+             ("MCP SERVER", "Node.js", ["Tools, prompts, resources.", "Applies the write gate.", "Plans the cameras."], "blue"),
+             ("ADD-IN", "C# inside Revit", ["Loopback only, port 8712,", "bearer token. Queues work", "onto Revit's own thread."], "indigo"),
+             ("REVIT", "Your open model", ["Read live, never cached.", "Writes: one transaction,", "one Ctrl+Z."], "green")]
+    xs = [64 + i * (cw + gap) for i in range(4)]
+    for (kick, title, lines, col), x in zip(cards, xs):
+        c.card(x, y, cw, h, 22)
+        c.rect(x + 20, y + 20, 30, 5, r=2.5, fill=t[col])
+        c.text(x + 20, y + 52, kick, 11.5, 700, t["ink"][col], spacing=1)
+        c.text(x + 20, y + 80, title, 19, 700, spacing=-0.2)
+        c.lines(x + 20, y + 108, lines, 13.5, 400, t["sub"], lh=1.5)
+    for i, labs in enumerate([("MCP over", "stdio"), ("HTTP over", "loopback"), ("Revit", "API")]):
+        x1, x2 = xs[i] + cw + 8, xs[i + 1] - 8
+        c.arrow(x1, y + 95, x2, y + 95, t["faint"], 2.5, 8)
+        c.text((x1 + x2) / 2, y + 72, labs[0], 11.5, 600, t["sub"], "middle")
+        c.text((x1 + x2) / 2, y + 87, labs[1], 11.5, 600, t["sub"], "middle")
+    bx = xs[1]
+    c.card(bx, 440, 560, 52, 16)
+    c.dot(bx + 24, 466, 6, t["orange"])
+    c.text(bx + 40, 471, "Optional: Blender renders photoreal pictures from an exported glTF, locally.", 14, 500)
+    c.text(W - 56, 471, "Nothing is uploaded.", 14, 600, t["ink"]["green"], "end")
+    return c
+
+
+def make_toolmap(theme, groups):
+    total = sum(len(v) for _, _, v in groups)
+    W, H = 1200, 660
+    c = Canvas(W, H, theme, f"The {total} tools in revit-mcp",
+               "Nineteen read tools for the model and its structure, six picture tools, one export tool and two gated write tools: " + "; ".join(f"{n}: {', '.join(v)}" for n, _, v in groups))
+    t = c.t
+    c.text(56, 84, f"{total} tools. Two can change the model.", 40, 700, spacing=-0.7)
+    c.text(56, 118, "Everything else reads, renders or exports. Writes need two switches and are previewed first.", 18, 400, t["sub"])
+    pos = [(56, 156, 536, 330), (608, 156, 536, 222), (608, 394, 536, 92), (56, 502, 1088, 100)]
+    for (name, col, tools), (x, y, w, h) in zip(groups, pos):
+        c.card(x, y, w, h, 22)
+        c.dot(x + 28, y + 34, 7, t[col])
+        c.text(x + 46, y + 40, name, 19, 700)
+        c.text(x + w - 24, y + 40, f"{len(tools)} tool" + ("s" if len(tools) != 1 else ""), 13, 600, t["sub"], "end")
+        colsn = 2 if len(tools) > 8 else (2 if w > 800 else 1)
+        rows_n = (len(tools) + colsn - 1) // colsn
+        cwid = (w - 48) / colsn
+        for i, tool in enumerate(tools):
+            c.text(x + 24 + (i // rows_n) * cwid, y + 74 + (i % rows_n) * 23, tool, 13, 500, t["text"], mono=True)
+    return c
+
+
+def tool_groups(path):
+    import re
+    src = path.read_text(encoding="utf-8")
+    tools = re.findall(r"name: '([a-z_]+)',\s*title: '[^']*',\s*op: '[^']*',(?:\s*kind: '[^']*',)?\s*write: (true|false)", src)
+    names = [n for n, _ in tools]
+    writes = [n for n, w in tools if w == "true"]
+    pictures = [n for n in names if n.startswith("render_") or n in ("scene_info", "export_view_image")]
+    export = [n for n in names if n == "export_model"]
+    model = [n for n in names if n not in writes + pictures + export]
+    return [("Model and structure", "blue", model), ("Pictures", "orange", pictures), ("Export", "green", export), ("Writes, gated and previewed", "red", writes)]
+
+
 if __name__ == "__main__":
-    out = Path(__file__).resolve().parent.parent / "assets"
+    HERE = Path(__file__).resolve().parent.parent
+    out = HERE / "assets"
     build(out, "render-pipeline", make_render_pipeline)
     build(out, "safety-lanes", make_lanes)
+    build(out, "architecture", make_architecture)
+    build(out, "tool-map", make_toolmap, tool_groups(HERE / "server" / "tools.mjs"))
