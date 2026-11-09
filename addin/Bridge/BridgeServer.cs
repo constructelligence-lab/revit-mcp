@@ -29,6 +29,8 @@ public sealed class BridgeServer : IDisposable
     /// <summary>How long a read may take before the client is told Revit is busy. Writes get twice this: a transaction can wait on a workset checkout.</summary>
     public static readonly TimeSpan ReadTimeout = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan WriteTimeout = TimeSpan.FromSeconds(60);
+    /// <summary>A render builds a view, shades it and writes an image; a big model at 4000 px can take a while.</summary>
+    public static readonly TimeSpan RenderTimeout = TimeSpan.FromSeconds(180);
 
     private const int MaxBodyBytes = 1 * 1024 * 1024;
 
@@ -163,7 +165,7 @@ public sealed class BridgeServer : IDisposable
 
         try
         {
-            var timeout = RevitOps.IsWrite(op) ? WriteTimeout : ReadTimeout;
+            var timeout = RevitOps.IsWrite(op) ? WriteTimeout : op == "scene.render" ? RenderTimeout : ReadTimeout;
             var result = await OnRevitThread(app => RevitOps.Run(app, _settings, op, args), timeout, _stop.Token);
             await WriteAsync(context, 200, new { ok = true, result });
         }

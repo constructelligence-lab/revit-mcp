@@ -69,6 +69,25 @@ Report gaps (a view that looks issued but is unplaced, sheets with no views, an 
 
 Say how many elements you checked and how many you changed.`,
   },
+  {
+    name: 'presentation_renders',
+    title: 'Presentation renders',
+    description: 'A client-ready set of pictures of the open model: plan the shots, render them, look at each one, fix what is wrong and pick the best.',
+    args: {
+      audience: z.string().optional().describe('Who the pictures are for, e.g. "planning committee" or "client board"'),
+      mood: z.enum(['day', 'morning', 'golden_hour', 'overcast', 'winter']).optional().describe('Light and sky (default golden_hour)'),
+    },
+    build: ({ audience, mood }) => `Make a presentation set of pictures of the open Revit model${audience ? ` for ${audience}` : ''}.
+
+1. scene_info — read the bounds, site and rooms. Say what building this is before you shoot it.
+2. render_gallery with ${mood ?? 'golden_hour'} light and outlines on — the four exterior corners first. LOOK at each image. Say honestly which are strong and which are not (camera inside a neighbour, a facade hidden, a flat horizon).
+3. Fix what is weak with render_scene: another preset, or an explicit eye and target from the bounds; hide categories that clutter (Furniture, Planting, Site) when the building is the subject; try aerial_* for context.
+4. Add two or three interiors (preset interior, naming the rooms that matter) and one top view if a plan reads well.
+5. Finish with the best five or six: for each, the file path, the camera and the one-line story it tells.
+
+Rules: these are Revit's own visual styles, not ray-traced renders — do not describe them as photorealistic. Nothing in the model changes, and you must not say it does. If an image is poor, say so and re-shoot rather than presenting it.`,
+  },
+
 ];
 
 export const PROMPT_BY_NAME = new Map(PROMPTS.map(prompt => [prompt.name, prompt]));

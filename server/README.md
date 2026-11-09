@@ -2,7 +2,7 @@
 
 The MCP server for [revit-mcp](https://github.com/constructelligence-lab/revit-mcp): it puts the Autodesk
 Revit model a user has open in front of any MCP client — Claude Desktop, Claude Code, Cursor, Windsurf,
-VS Code, DSCode — as fifteen tools, four workflow prompts and three live resources.
+VS Code, DSCode — as eighteen tools, five workflow prompts and three live resources.
 
 ```sh
 npx @constructelligence/revit-mcp --mock     # the sample model: try every tool without Revit

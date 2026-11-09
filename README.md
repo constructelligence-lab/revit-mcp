@@ -41,7 +41,7 @@ document, and nothing may touch one off Revit's thread. The **MCP server** owns 
 | `server/mock.mjs` | The sample model that makes all of this testable without Revit |
 | `addin/Bridge/BridgeServer.cs` | `HttpListener` on loopback, token check, write gate, one JSON envelope |
 | `addin/Bridge/RevitDispatcher.cs` | The queue and `ExternalEvent` that put work on Revit's thread; the abandoned-request rule |
-| `addin/Handlers/` | The Revit API work: fourteen reads and one write (`parameter.set`) |
+| `addin/Handlers/` | The Revit API work: sixteen reads (including the render ops) and one write (`parameter.set`) |
 | `docs/protocol.md` · `security.md` · `guide.md` | The contract, the threat model, and the 20-minute guide |
 
 Two processes, because the Revit API is in-process and single-threaded: nothing outside Revit can read a
@@ -55,7 +55,7 @@ the model.
 | **Read-only until *two* switches are on** | The add-in refuses writes with `writes_disabled` before any Revit work, and the server refuses to call the write tool. Neither can open the gate alone. |
 | **One write, and it is small** | `set_parameter`: instance parameters only, preview by default, one transaction per change (one Ctrl+Z), type parameters refused with the reason. No create, delete, save or sync anywhere. |
 | **A written contract** | [`docs/protocol.md`](docs/protocol.md) is the bridge: every op, argument, result and error code. Tests fail when the catalogue and the docs disagree. |
-| **Testable without Revit** | A sample model behind the same bridge means the tools, prompts, resources and failure modes are covered in CI on Linux, macOS and Windows — 22 tests, no Windows required. |
+| **Testable without Revit** | A sample model behind the same bridge means the tools, prompts, resources and failure modes are covered in CI on Linux, macOS and Windows — 33 tests, no Windows required. |
 | **It compiles against the real API** | The add-in builds against the genuine Revit reference assemblies, so the API misuse a CI run would catch is caught without a Revit licence. |
 | **An honest threat model** | [`docs/security.md`](docs/security.md) says what is protected *and* what is not (the token file, provider egress, why read-only is still a disclosure). |
 | **Numbers come from Revit** | Every figure is a live read at call time. No caching, no copy of the model, no invented ids: ids come from `query_elements` or `current_selection`. |
@@ -72,10 +72,12 @@ npm run demo        # a real MCP transcript against the sample model
 ```
 revit-mcp demo — sample model, no Revit required
 
-tools (15):     revit_status, model_overview, list_levels, list_categories, query_elements,
+tools (18):     revit_status, model_overview, list_levels, list_categories, query_elements,
                 element_details, list_views, list_sheets, list_families, model_warnings,
-                list_schedules, read_schedule, current_selection, export_view_image, set_parameter
-prompts (4):    model_health_check, quantities_from_schedules, sheet_qa, parameter_audit
+                list_schedules, read_schedule, current_selection, export_view_image,
+                scene_info, render_scene, render_gallery, set_parameter
+prompts (5):    model_health_check, quantities_from_schedules, sheet_qa, parameter_audit,
+                presentation_renders
 resources (3):  revit://status, revit://model/overview, revit://warnings
 
 { "mock": true, "revit": { "version": "2025.2", "document": "Sample Tower.rvt",
@@ -133,6 +135,9 @@ To allow writes, add `--allow-writes` **and** set `"allowWrites": true` in
 | `read_schedule` | The rows and columns of one schedule as it computes them, for quantities and take-off questions. Header names are Revit's; totals rows are marked as such. | no |
 | `current_selection` | What the user has selected in Revit right now. The fastest way to answer "this wall" — ask, then work from these ids. | no |
 | `export_view_image` | Render a view (the active one by default) to a PNG file and return its path and size, so a picture can be read alongside the data. Writes an image file in a temp folder; it never changes the model. | no |
+| `scene_info` | What a camera needs to know before it is placed: the building's bounds in the document's length unit, true north, the site (latitude and longitude, so sun studies are real), levels with elevations, rooms with their centre points, and the 3D views that already exist. Call this before render_scene with explicit coordinates; render_scene with a preset calls it for you. | no |
+| `render_scene` | Make a picture of the model from a camera you choose, and get the image back so you can look at it. Pick a preset (exterior corner, aerial, elevation, top plan, or interior of a room) or give an explicit eye and target; add a mood (golden_hour, overcast…) or an exact sun date and time, a sky, a visual style, hidden categories or a section box. Judge the result and iterate: move the camera, change the mood, hide what blocks the view. It builds a temporary 3D view and rolls it back, so the model, its views and its undo stack are unchanged; the only lasting effect is an image file. Uses Revit's own visual styles: a good presentation still, not a ray-traced render. | no |
+| `render_gallery` | Several pictures in one go, for a presentation set: the same mood and style from a list of presets (default: four exterior corners). Up to six. Each image comes back so you can pick the best, and say which and why. Same guarantees as render_scene: nothing in the model changes. | no |
 | `set_parameter` | Change one parameter on one element. Preview by default (apply: false) and returns the old and new value; with apply: true it runs in a single Revit transaction, so one Ctrl+Z undoes it. Requires writes to be enabled on both the server and the add-in, and never touches type parameters that would change every instance. | **yes** — preview by default |
 
 ### Workflow prompts
@@ -143,6 +148,7 @@ To allow writes, add `--allow-writes` **and** set `"allowWrites": true` in
 | `quantities_from_schedules` | Take-off numbers for an estimate, read from the schedules the model computes, with the caveats a quantity surveyor would want. |
 | `sheet_qa` | Check what was issued: sheets, their views, revisions, and anything printed that should not have been. |
 | `parameter_audit` | Find empty Marks and other unpopulated identity data, then preview the fix one element at a time — nothing is written without a yes. |
+| `presentation_renders` | A client-ready set of pictures of the open model: plan the shots, render them, look at each one, fix what is wrong and pick the best. |
 
 ### Live resources
 
@@ -155,6 +161,35 @@ To allow writes, add `--allow-writes` **and** set `"allowWrites": true` in
 
 `revit_status` first, then `model_overview`; ids come from `query_elements` or `current_selection`, never
 from the model's imagination. A call with no `apply: true` changes nothing.
+
+## Pictures: renderings a client can judge
+
+Ask for a picture and the assistant gets the **image itself**, not a path, so it can look, say what is weak,
+and re-shoot. `render_scene` takes a named shot or an explicit camera; `render_gallery` takes a set.
+
+```text
+"Make a client set of the tower at golden hour, four exterior corners, then the best aerial and the
+ main meeting room. Look at each one and tell me which two you would send."
+```
+
+| You choose | Options |
+|---|---|
+| **Shot** | `exterior_ne/nw/se/sw`, `aerial_*`, `front/back/left/right`, `top`, `interior` (a room by name, number or id, and which way to look), or your own `eye` and `target` |
+| **Light** | `mood`: `day`, `morning`, `golden_hour`, `overcast`, `winter`; or an exact `sun` (month, day, local hour, intensity) at the model's real site |
+| **Look** | `style` (realistic, shaded, consistent colours, hidden line, wireframe), `background` sky, `outlines`, `width` up to 4000 px, `format` |
+| **Clean-up** | `hide_categories` (furniture, planting, site) and a `section_box` to open one floor |
+
+The camera maths (corner diagonals, aerial height, eye height in the room's own level, unit conversion) is in
+[`server/camera.mjs`](server/camera.mjs) and is tested without Revit. In Revit the add-in builds a throw-away
+3D view, dresses it, exports it and **rolls the transaction group back**: the model, its views and its undo
+stack are as they were, so rendering is not behind the write gate. The `presentation_renders` prompt runs the
+whole routine: plan, shoot, look, fix, choose.
+
+> **Honest limits.** These are Revit's own visual styles with real sun and shadows: crisp presentation
+> stills, not ray-traced photorealism (Revit's Render command is not exposed by its API). The add-in is
+> compiled against the real Revit 2024–2027 API in CI; the render path has not yet been run against a live
+> Revit session by the author, so treat the first renders on your machine as the real test and open an issue
+> with what Revit says if one is off.
 
 ## What a session looks like
 
@@ -191,7 +226,7 @@ a rendered view — are in [docs/guide.md](docs/guide.md), and four of them ship
 
 ## What it deliberately does not do
 
-- **No create, delete, move or type changes.** One instance parameter at a time, previewed, in one
+- **No create, delete, move or type changes to the model.** One instance parameter at a time, previewed, in one
   transaction; anything else is a decision for a person in Revit.
 - **No save, sync or worksharing operations.** The bridge edits the open model; it never writes the file.
 - **No IFC or cloud (ACC/BIM 360) access.** It reads the document Revit has open, which may be ahead of or
@@ -203,7 +238,7 @@ a rendered view — are in [docs/guide.md](docs/guide.md), and four of them ship
 
 ```sh
 cd server && npm install
-npm test              # 22 tests: catalogues, bridge failure modes, end-to-end MCP over stdio, write gate
+npm test              # 33 tests: catalogues, bridge failure modes, end-to-end MCP over stdio, write gate
 npm run demo          # the transcript above, for real
 npm run tools:table   # regenerate the menus in this README
 npm run check:docs    # fail if they are out of date (CI runs this)

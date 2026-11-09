@@ -16,7 +16,7 @@ export const DEFAULT_BRIDGE_URL = 'http://127.0.0.1:8712';
 export const DEFAULT_TIMEOUT_MS = 30_000;
 /** The add-in writes its bearer token here on first run; the server reads it unless REVIT_MCP_TOKEN is set. */
 export const TOKEN_FILE = join(homedir(), '.revit-mcp', 'token');
-export const BRIDGE_VERSION = '0.1.0';
+export const BRIDGE_VERSION = '0.2.0';
 
 export class BridgeError extends Error {
   constructor(message, { code = 'bridge_error', status } = {}) {
@@ -66,12 +66,13 @@ export class Bridge {
   }
 
   /** Run one bridge operation (docs/protocol.md) and return its result. */
-  async call(op, args = {}) {
-    const body = await this.#request('POST', '/op', { op, args });
+  async call(op, args = {}, { timeoutMs } = {}) {
+    const body = await this.#request('POST', '/op', { op, args }, timeoutMs);
     return body.result;
   }
 
-  async #request(method, path, payload) {
+  async #request(method, path, payload, timeoutOverride) {
+    const limit = Math.max(this.#timeoutMs, Number(timeoutOverride) || 0);
     const headers = { accept: 'application/json' };
     if (payload !== undefined) headers['content-type'] = 'application/json';
     if (this.#token) headers.authorization = `Bearer ${this.#token}`;
@@ -82,13 +83,13 @@ export class Bridge {
         method,
         headers,
         body: payload === undefined ? undefined : JSON.stringify(payload),
-        signal: AbortSignal.timeout(this.#timeoutMs),
+        signal: AbortSignal.timeout(limit),
       });
     } catch (error) {
       const timedOut = error?.name === 'TimeoutError' || error?.name === 'AbortError';
       throw new BridgeError(
         timedOut
-          ? `Revit did not answer within ${Math.round(this.#timeoutMs / 1000)}s. A modal dialog or a long-running command blocks Revit's UI thread — close it and try again, or ask for less at once.`
+          ? `Revit did not answer within ${Math.round(limit / 1000)}s. A modal dialog or a long-running command blocks Revit's UI thread — close it and try again, or ask for less at once.`
           : `No revit-mcp add-in at ${this.#url}. Open Autodesk Revit with the add-in loaded, or start this server with --mock to work against the sample model.`,
         { code: timedOut ? 'timeout' : 'unreachable' },
       );

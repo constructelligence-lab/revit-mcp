@@ -5,10 +5,10 @@ What exists, what is next, and what is deliberately not planned — so you can j
 ## v0.1 — shipped
 
 - Loopback bridge inside Revit, bearer token, read-only by default, writes gated in both processes
-- 15 tools: model and category reads, element query/details, levels, views, sheets, families, schedules,
+- 15 tools (18 in v0.2 with renderings): model and category reads, element query/details, levels, views, sheets, families, schedules,
   warnings, current selection, view-to-PNG, and `set_parameter` (preview, one transaction, instance only)
 - 4 prompt workflows and 3 live resources, so clients inherit a method rather than inventing one
-- Sample model for demos, CI and tests with no Revit installed; 22 tests
+- Sample model for demos, CI and tests with no Revit installed; 33 tests in v0.2
 - `docs/protocol.md` (the contract), `docs/security.md` (what is and is not protected)
 
 ## Next

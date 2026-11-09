@@ -20,7 +20,7 @@ an op without a handler, fails the test suite rather than at 7am on a deadline.
 
 ```json
 { "ok": true, "result": {
-    "bridge": { "version": "0.1.0", "pid": 4711, "writesAllowed": false, "port": 8712, "mock": false },
+    "bridge": { "version": "0.2.0", "pid": 4711, "writesAllowed": false, "port": 8712, "mock": false },
     "revit": { "version": "2025", "document": "Tower.rvt", "path": "C:\\Projects\\Tower.rvt",
                "units": "autodesk.spec.aec:length-millimeters", "workshared": true,
                "activeView": "L2 - Floor Plan", "modified": true },
@@ -94,7 +94,9 @@ Args are JSON; all are optional unless marked required. Lengths are in the docum
 | `schedule.read` | `schedule` **required**, `limit` | Column titles and computed rows |
 | `selection.get` | — | What the user has selected in Revit |
 | `view.export_image` | `view`, `width` | Writes a PNG under `%TEMP%\revit-mcp` and returns the path Revit wrote |
+| `scene.info` | `room_limit` | Bounds of the model's elements, true north, site latitude/longitude, levels, room centres, existing 3D views |
+| `scene.render` | `eye`, `target` **required** (`[x, y, z]` in the document unit); `perspective`, `style`, `sun`, `background`, `outlines`, `hide_categories`, `section_box`, `width`, `format`, `name` | Builds a temporary 3D view, exports it, rolls it back (`model_changed: false`); returns the image path. 180 s timeout |
 | `parameter.set` | `element_id`, `parameter`, `value` **required**, `apply` (default false) | Preview: old and new value. `apply: true`: one transaction, `applied: true` |
 
-`parameter.set` is the only op in the write set (see `RevitOps.Writes`). Adding another means changing that
+`scene.render` is not in the write set: it runs inside a `TransactionGroup` that is always rolled back, so nothing it creates survives. `parameter.set` is the only op in the write set (see `RevitOps.Writes`). Adding another means changing that
 list, the tool catalogue and `docs/security.md` together — the tests fail if they disagree.

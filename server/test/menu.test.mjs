@@ -33,7 +33,7 @@ test('the prompt catalogue is complete and named like a tool', () => {
 test('every prompt tells the model to read before it writes, and to say what it read', () => {
   for (const prompt of PROMPTS) {
     const text = prompt.build({});
-    assert.match(text, /revit_status|list_|model_overview|query_elements|sheets\.list|list_schedules/, `${prompt.name} must name the reads it needs`);
+    assert.match(text, /revit_status|list_|model_overview|query_elements|sheets\.list|list_schedules|scene_info/, `${prompt.name} must name the reads it needs`);
     if (/set_parameter/.test(text)) assert.match(text, /confirm|preview|say what will change/i, `${prompt.name} writes: it must ask first`);
   }
 });

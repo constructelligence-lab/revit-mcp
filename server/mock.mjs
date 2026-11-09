@@ -8,7 +8,13 @@
 // It is a *fixture*, not a Revit simulation: no geometry engine, no transactions, no worksharing. Anything
 // it answers about the real API is a claim about this file, nothing more. Results carry `mock: true` so a
 // client can never mistake them for a live model.
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { BridgeError } from './bridge.mjs';
+
+// A 1x1 PNG: the mock writes a real, decodable image file so the image path through the server is tested end to end.
+const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
 const LEVELS = [
   { name: 'L1', elevation: 0 },
@@ -115,6 +121,7 @@ function buildElements() {
 export class MockRevit {
   #elements = buildElements();
   #writesAllowed;
+  #renders = 0;
   #documents = { version: '2025.2', document: 'Sample Tower.rvt', path: 'C:\\Projects\\Sample Tower.rvt', workshared: true };
 
   constructor({ writesAllowed = true } = {}) {
@@ -265,6 +272,45 @@ export class MockRevit {
     if (!VIEWS.some(([name]) => name === view)) throw new BridgeError(`No view named '${view}'. list_views shows what this model has.`, { code: 'not_found' });
     const width = args.width ?? 1600;
     return { view, path: `/tmp/revit-mcp-mock/${view.replace(/[^\w.-]+/g, '-')}-${width}.png`, width, height: Math.round(width * 0.62), mocked: true };
+  }
+
+  'scene.info'() {
+    return {
+      mock: true,
+      units: 'autodesk.unit.unit:millimeters-1.0.1',
+      elements_scanned: 132,
+      bounds: { min: [0, 0, 0], max: [30000, 20000, 10800] },
+      true_north_degrees: 0,
+      site: { latitude: 53.34981, longitude: -6.26031, place: 'Dublin, Ireland' },
+      levels: LEVELS,
+      rooms: [
+        { id: 100201, name: 'Office', number: '101', level: 'L1', centre: [6000, 5000, 0], area_m2: 42.5 },
+        { id: 100202, name: 'Meeting', number: '102', level: 'L1', centre: [18000, 5000, 0], area_m2: 24 },
+        { id: 100203, name: 'Office', number: '201', level: 'L2', centre: [6000, 5000, 3600], area_m2: 42.5 },
+      ],
+      existing_3d_views: [{ name: '{3D}', perspective: false }],
+      materials: 61,
+      note: "Coordinates are Revit's internal coordinates in the document's length unit. Place cameras from these, not from guesses.",
+    };
+  }
+
+  'scene.render'(args = {}) {
+    if (!Array.isArray(args.eye) || !Array.isArray(args.target)) throw new BridgeError("'eye' and 'target' are required: [x, y, z].", { code: 'bad_request' });
+    if (args.eye.every((v, i) => v === args.target[i])) throw new BridgeError("'eye' and 'target' are the same point; move the camera away from what it looks at.", { code: 'bad_request' });
+    const style = args.style ?? 'realistic';
+    if (!['wireframe', 'hidden', 'shaded', 'consistent_colors', 'realistic', 'rendering'].includes(style)) {
+      throw new BridgeError(`Unknown style '${style}'.`, { code: 'bad_request' });
+    }
+    const folder = join(tmpdir(), 'revit-mcp-mock');
+    mkdirSync(folder, { recursive: true });
+    const path = join(folder, `${String(args.name ?? 'render').replace(/[^\w.-]+/g, '-')}-${this.#renders++}.png`);
+    writeFileSync(path, TINY_PNG);
+    return {
+      mock: true, path, exists: true, width: args.width ?? 1920, style, perspective: args.perspective !== false,
+      eye: args.eye, target: args.target, sun: args.sun ?? null, background: args.background ?? null,
+      hide_categories: args.hide_categories ?? [], model_changed: false, notes: [],
+      note: 'Mock render: a 1x1 placeholder image. The real add-in exports the camera view from Revit and rolls the view back.',
+    };
   }
 
   'parameter.set'(args = {}) {

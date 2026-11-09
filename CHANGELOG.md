@@ -6,6 +6,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0]
+
+### Added
+
+- **Renderings.** `render_scene` and `render_gallery` make presentation pictures and hand the image back to
+  the client so it can judge and re-shoot. Named shots (exterior corners, aerials, elevations, top, interior
+  of a room) or an explicit camera; `mood` or an exact sun date and time at the model's real site; sky,
+  outlines, visual style, hidden categories, section box; up to 4000 px.
+- **`scene_info`**: bounds, true north, site, levels, room centres and existing 3D views, so a camera is
+  placed from facts.
+- **`presentation_renders`** prompt: plan the shots, shoot, look, fix, choose.
+- `export_view_image` now returns the image to the client as well as the path.
+- Add-in `scene.info` and `scene.render` ops. The render builds a throw-away 3D view and rolls a
+  `TransactionGroup` back: no lasting change to the model, its views or the undo stack. 180 s timeout.
+- `server/camera.mjs`: camera planning in testable JavaScript; 11 new tests (33 in all).
+
+### Fixed
+
 ### Fixed
 
 - **The CI matrix now builds every supported Revit release.** Revit 2027's API package targets .NET 10, and

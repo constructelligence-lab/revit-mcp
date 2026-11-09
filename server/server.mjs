@@ -18,14 +18,17 @@ import { PROMPTS } from './prompts.mjs';
 import { RESOURCES } from './resources.mjs';
 import { Bridge, DEFAULT_BRIDGE_URL, DEFAULT_TIMEOUT_MS, discoverToken, TOKEN_FILE } from './bridge.mjs';
 import { MockRevit } from './mock.mjs';
+import { buildRenderArgs } from './camera.mjs';
+import { readFileSync, statSync } from 'node:fs';
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 
 const INSTRUCTIONS = [
   'revit-mcp reads the Autodesk Revit model the user has open, and can change one parameter at a time if the operator allowed it.',
   'Start with revit_status (is the bridge up, which document) and model_overview (what is in it).',
   'Element ids come from query_elements or current_selection — never invent one.',
   'Writes: set_parameter previews by default. Say what will change, in which document and on which element, and get a yes before calling it with apply: true. Each write is one Revit transaction, undoable with a single Ctrl+Z in Revit.',
+  'Pictures: render_scene (one camera) and render_gallery (a set) return the image itself. Look at it, say what works and what does not, and iterate: change the preset, the mood or the hidden categories. They never change the model.',
   'Everything here is a live read of a working model, not a QA report or an audit: warnings and counts are prompts to look, not findings. Say what you read and what you did not look at.',
 ].join(' ');
 
@@ -75,6 +78,54 @@ export function createBridge(args) {
 }
 
 const asText = value => ({ content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] });
+
+const IMAGE_LIMIT_BYTES = 6 * 1024 * 1024;
+const RENDER_TIMEOUT_MS = 180_000;
+
+/** An image block for a file the add-in wrote, when this process can read it (same machine) and it is a sane size. */
+function imageBlock(path) {
+  try {
+    if (!path || statSync(path).size > IMAGE_LIMIT_BYTES) return null;
+    const mimeType = /\.jpe?g$/i.test(path) ? 'image/jpeg' : 'image/png';
+    return { type: 'image', data: readFileSync(path).toString('base64'), mimeType };
+  } catch {
+    return null;
+  }
+}
+
+/** Text first (what was made, with the camera), then the pictures themselves. */
+const withImages = (value, paths) => {
+  const images = paths.map(imageBlock).filter(Boolean);
+  const note = images.length < paths.filter(Boolean).length
+    ? { image_note: 'The image file exists on the Revit machine but this server could not read it (different machine, or over 6 MB). Open the path instead.' }
+    : {};
+  return { content: [{ type: 'text', text: JSON.stringify({ ...value, ...note }, null, 2) }, ...images] };
+};
+
+const DEFAULT_GALLERY = ['exterior_ne', 'exterior_nw', 'exterior_se', 'exterior_sw'];
+
+/** Tools that are more than one bridge call: they plan a camera from the model, then render. */
+async function runComposite(tool, input, bridge) {
+  const scene = tool.kind === 'render' && !input.preset ? null : await bridge.call('scene.info', {});
+  if (tool.kind === 'render') {
+    const { args } = buildRenderArgs(scene, input);
+    const result = await bridge.call('scene.render', args, { timeoutMs: RENDER_TIMEOUT_MS });
+    return withImages(result, [result.path]);
+  }
+  const { presets = DEFAULT_GALLERY, ...shared } = input;
+  const shots = [];
+  for (const preset of presets) {
+    try {
+      const { args } = buildRenderArgs(scene, { ...shared, preset, width: shared.width ?? 1600 });
+      shots.push({ preset, ...(await bridge.call('scene.render', args, { timeoutMs: RENDER_TIMEOUT_MS })) });
+    } catch (error) {
+      // One bad shot (no rooms for an interior, say) must not throw away the others.
+      shots.push({ preset, error: error?.message ?? String(error), code: error?.code });
+    }
+  }
+  return withImages({ shots }, shots.map(s => s.path));
+}
+
 const asError = (message, extra = {}) => ({ content: [{ type: 'text', text: JSON.stringify({ error: message, ...extra }, null, 2) }], isError: true });
 
 /**
@@ -101,8 +152,10 @@ export function buildServer({ bridge, allowWrites = false, version = VERSION } =
         );
       }
       try {
+        if (tool.kind) return await runComposite(tool, input ?? {}, bridge);
         const result = await bridge.call(tool.op, input ?? {});
-        return asText(result);
+        // A view export is a picture: hand the client the image, not just a path on another process's disk.
+        return tool.op === 'view.export_image' ? withImages(result, [result?.path]) : asText(result);
       } catch (error) {
         const extra = { code: error?.code ?? 'error' };
         if (error?.code === 'unreachable') extra.hint = 'Open Revit with the add-in, or restart this server with --mock to work against the sample model.';

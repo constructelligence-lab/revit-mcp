@@ -17,7 +17,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>RevitMcp</AssemblyName>
     <RootNamespace>RevitMcp</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <!-- Revit release to build against: 2025, 2026, 2027. Revit 2024 and older run .NET Framework 4.8:
          build those with -p:TargetFramework=net48 and -p:RevitVersion=2024. Restore and build must agree on
          the framework, so pass both properties to every dotnet command (dotnet build does the restore). -->

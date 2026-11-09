@@ -1,6 +1,6 @@
 {
   "name": "@constructelligence/revit-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "MCP server that connects AI clients to Autodesk Revit through the revit-mcp add-in",
@@ -45,6 +45,7 @@
   "files": [
     "server.mjs",
     "bridge.mjs",
+    "camera.mjs",
     "tools.mjs",
     "prompts.mjs",
     "resources.mjs",

@@ -9,6 +9,7 @@
 // `op` is the bridge operation (docs/protocol.md). The server never talks Revit API directly: it
 // forwards { op, args } to the add-in, which does the Revit work on Revit's own thread.
 import { z } from 'zod';
+import { PRESETS, MOODS } from './camera.mjs';
 
 const elementId = z.number().int().positive().describe('Revit element id, as returned by query_elements');
 const limit = z.number().int().min(1).max(500).optional().describe('Maximum rows to return (default 50, max 500)');
@@ -159,6 +160,74 @@ export const TOOLS = [
     params: {
       view: z.string().optional().describe('View name; omit for the active view'),
       width: z.number().int().min(200).max(4000).optional().describe('Image width in pixels (default 1600)'),
+    },
+  },
+  {
+    name: 'scene_info',
+    title: 'Scene info',
+    op: 'scene.info',
+    write: false,
+    description:
+      'What a camera needs to know before it is placed: the building\'s bounds in the document\'s length unit, true north, the site '
+      + '(latitude and longitude, so sun studies are real), levels with elevations, rooms with their centre points, and the 3D views that '
+      + 'already exist. Call this before render_scene with explicit coordinates; render_scene with a preset calls it for you.',
+    params: { room_limit: z.number().int().min(1).max(200).optional().describe('Most rooms to list (default 40)') },
+  },
+  {
+    name: 'render_scene',
+    title: 'Render scene',
+    op: 'scene.render',
+    kind: 'render',
+    write: false,
+    description:
+      'Make a picture of the model from a camera you choose, and get the image back so you can look at it. Pick a preset (exterior corner, '
+      + 'aerial, elevation, top plan, or interior of a room) or give an explicit eye and target; add a mood (golden_hour, overcast…) or an exact '
+      + 'sun date and time, a sky, a visual style, hidden categories or a section box. Judge the result and iterate: move the camera, change '
+      + 'the mood, hide what blocks the view. It builds a temporary 3D view and rolls it back, so the model, its views and its undo stack are '
+      + 'unchanged; the only lasting effect is an image file. Uses Revit\'s own visual styles: a good presentation still, not a ray-traced render.',
+    params: {
+      preset: z.enum(PRESETS).optional().describe('A named shot. interior needs a room (or uses the largest).'),
+      room: z.string().optional().describe('For preset interior: room name, number or id from scene_info'),
+      look: z.enum(['north', 'south', 'east', 'west']).optional().describe('For preset interior: which way to look (default north)'),
+      eye: z.array(z.number()).length(3).optional().describe('Camera position [x, y, z] in the document length unit (instead of a preset)'),
+      target: z.array(z.number()).length(3).optional().describe('Point the camera looks at [x, y, z] (instead of a preset)'),
+      perspective: z.boolean().optional().describe('Perspective (default) or orthographic'),
+      mood: z.enum(Object.keys(MOODS)).optional().describe('Light and sky together: day, morning, golden_hour, overcast, winter'),
+      sun: z.object({
+        month: z.number().int().min(1).max(12).optional(),
+        day: z.number().int().min(1).max(28).optional(),
+        hour: z.number().min(0).max(23.99).optional().describe('Local time, decimal hours (15.5 = 3:30pm)'),
+        shadows: z.boolean().optional().describe('Cast shadows (default true when sun is given)'),
+        intensity: z.number().int().min(0).max(100).optional(),
+        shadow_intensity: z.number().int().min(0).max(100).optional(),
+      }).optional().describe('Exact sun position, overrides the mood'),
+      background: z.enum(['clear_sky', 'few_clouds', 'cloudy', 'white', 'transparent']).optional(),
+      style: z.enum(['realistic', 'shaded', 'consistent_colors', 'hidden', 'wireframe', 'rendering']).optional().describe('Visual style (default realistic)'),
+      outlines: z.boolean().optional().describe('Crisp silhouette edges'),
+      hide_categories: z.array(z.string()).max(30).optional().describe('Categories to hide in the picture, e.g. ["Furniture", "Planting"]'),
+      section_box: z.object({ min: z.array(z.number()).length(3), max: z.array(z.number()).length(3) }).optional().describe('Cut the model to this box (document units), e.g. to open one floor'),
+      width: z.number().int().min(400).max(4000).optional().describe('Image width in pixels (default 1920)'),
+      format: z.enum(['png', 'jpg']).optional(),
+      name: z.string().max(60).optional().describe('File name stem'),
+    },
+  },
+  {
+    name: 'render_gallery',
+    title: 'Render gallery',
+    op: 'scene.gallery',
+    kind: 'gallery',
+    write: false,
+    description:
+      'Several pictures in one go, for a presentation set: the same mood and style from a list of presets (default: four exterior corners). '
+      + 'Up to six. Each image comes back so you can pick the best, and say which and why. Same guarantees as render_scene: nothing in the model changes.',
+    params: {
+      presets: z.array(z.enum(PRESETS)).min(1).max(6).optional().describe('Shots to take (default exterior_ne, exterior_nw, exterior_se, exterior_sw)'),
+      mood: z.enum(Object.keys(MOODS)).optional(),
+      style: z.enum(['realistic', 'shaded', 'consistent_colors', 'hidden', 'wireframe', 'rendering']).optional(),
+      background: z.enum(['clear_sky', 'few_clouds', 'cloudy', 'white', 'transparent']).optional(),
+      outlines: z.boolean().optional(),
+      hide_categories: z.array(z.string()).max(30).optional(),
+      width: z.number().int().min(400).max(2400).optional().describe('Image width in pixels (default 1600)'),
     },
   },
   {

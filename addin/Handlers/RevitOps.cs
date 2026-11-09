@@ -39,6 +39,8 @@ public static partial class RevitOps
         "schedule.read" => ReadSchedule(app, args),
         "selection.get" => Selection(app),
         "view.export_image" => ExportViewImage(app, args),
+        "scene.info" => SceneInfo(app, args),
+        "scene.render" => RenderScene(app, args),
         "parameter.set" => SetParameter(app, args),
         _ => throw new RevitOpException("unknown_op", $"Unknown operation '{op}'. See docs/protocol.md."),
     };
