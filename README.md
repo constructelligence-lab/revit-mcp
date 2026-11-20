@@ -352,5 +352,10 @@ MIT — see [LICENSE](LICENSE). The Autodesk Revit API assemblies are Autodesk's
 never redistributed. Revit and Autodesk are trademarks of Autodesk, Inc.; this project is not affiliated with
 or endorsed by Autodesk.
 
+## Related on constructelligence.co
+
+- [open models, datasets and tools](https://constructelligence.co/open-source/)
+- [construction intelligence, defined](https://constructelligence.co/guides/construction-intelligence/)
+
 Built by [Constructelligence](https://constructelligence.co) — the same people who write the
 [AI in construction guide](https://github.com/constructelligence-lab/ai-in-construction-guide).
